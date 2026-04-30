@@ -379,7 +379,6 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
       .channel("bills-changes")
       .on("postgres_changes",{event:"*",schema:"public",table:"bills",filter:`house_id=eq.${myHouse.id}`},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"persons",filter:`house_id=eq.${myHouse.id}`},()=>loadAll())
-      .on("postgres_changes",{event:"*",schema:"public",table:"settlements",filter:`house_id=eq.${myHouse.id}`},()=>loadAll())
       .subscribe();
 
     return ()=>supabase.removeChannel(billsSub);
@@ -421,15 +420,16 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
 
       {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:999,padding:"10px 20px",borderRadius:20,fontSize:14,fontWeight:500,background:"#0f172a",color:"white",whiteSpace:"nowrap"}}>{toast}</div>}
 
-      {loading?<div style={{textAlign:"center",padding:"4rem",color:"#94a3b8"}}>Loading…</div>
+      <div style={{maxWidth:700,margin:"0 auto",width:"100%"}}>{loading?<div style={{textAlign:"center",padding:"4rem",color:"#94a3b8"}}>Loading…</div>
         :view==="Bills"?<BillsView bills={bills} persons={persons} categories={categories} myPerson={myPerson} myHouse={myHouse} settlements={settlements} reload={loadAll} showToast={showToast} onAdd={()=>setShowForm(true)}/>
         :view==="People"?<PeopleView persons={persons} bills={bills}/>
         :view==="Admin"?<HouseAdminView house={myHouse} persons={persons} bills={bills} categories={categories} reload={loadAll} showToast={showToast}/>
         :<ReportView bills={bills} persons={persons} categories={categories}/>
       }
 
+      </div>
       {view==="Bills"&&(
-        <button onClick={()=>setShowForm(true)} style={{position:"fixed",bottom:90,right:20,width:56,height:56,borderRadius:16,background:"#0f172a",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",zIndex:50}}>
+        <button onClick={()=>setShowForm(true)} style={{position:"fixed",bottom:90,right:"max(20px, calc(50% - 370px))",width:56,height:56,borderRadius:16,background:"#0f172a",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",zIndex:50}}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
       )}
@@ -675,6 +675,10 @@ function SuperAdminApp({user,onSignOut}){
   const [houses,setHouses]=useState([]);
   const [loading,setLoading]=useState(true);
   const [toast,setToast]=useState(null);
+  const [tab,setTab]=useState("dashboard");
+  const [stats,setStats]=useState(null);
+  const [showSupport,setShowSupport]=useState(false);
+  const [supportMsg,setSupportMsg]=useState("");
   const showToast=(msg)=>{setToast(msg);setTimeout(()=>setToast(null),3000);};
 
   const loadHouses=async()=>{
@@ -682,7 +686,31 @@ function SuperAdminApp({user,onSignOut}){
     const{data}=await supabase.from("houses").select("*, persons(count), bills(count)").order("created_at",{ascending:false});
     setHouses(data||[]);setLoading(false);
   };
-  useEffect(()=>{loadHouses();},[]);
+
+  const loadStats=async()=>{
+    const[{data:h},{data:p},{data:b},{data:s}]=await Promise.all([
+      supabase.from("houses").select("id,status,created_at"),
+      supabase.from("persons").select("id,is_approved,created_at"),
+      supabase.from("bills").select("id,amount,created_at"),
+      supabase.from("settlements").select("id,amount,method,created_at"),
+    ]);
+    setStats({
+      totalHouses:(h||[]).length,
+      activeHouses:(h||[]).filter(x=>x.status==="active").length,
+      suspendedHouses:(h||[]).filter(x=>x.status==="suspended").length,
+      totalMembers:(p||[]).length,
+      approvedMembers:(p||[]).filter(x=>x.is_approved).length,
+      pendingMembers:(p||[]).filter(x=>!x.is_approved).length,
+      totalBills:(b||[]).length,
+      totalSpent:(b||[]).reduce((s,x)=>s+Number(x.amount),0),
+      totalSettlements:(s||[]).length,
+      totalSettled:(s||[]).reduce((s,x)=>s+Number(x.amount),0),
+      cashSettlements:(s||[]).filter(x=>x.method==="cash").length,
+      revolutSettlements:(s||[]).filter(x=>x.method==="revolut").length,
+    });
+  };
+
+  useEffect(()=>{loadHouses();loadStats();},[]);
 
   const toggleHouse=async(h)=>{
     const newStatus=h.status==="active"?"suspended":"active";
@@ -706,8 +734,16 @@ function SuperAdminApp({user,onSignOut}){
   const shareWhatsApp=()=>window.open(`https://wa.me/?text=${encodeURIComponent(inviteMsg)}`,"_blank");
   const shareEmail=()=>window.open(`mailto:?subject=Manage your house expenses with MyHouseExpenses&body=${encodeURIComponent(inviteMsg)}`,"_blank");
 
+  const StatCard=({label,value,sub,color="#fff"})=>(
+    <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px",flex:1,minWidth:140}}>
+      <div style={{fontSize:11,color:"#94a3b8",fontWeight:600,marginBottom:6,letterSpacing:"0.08em"}}>{label}</div>
+      <div style={{fontSize:28,fontWeight:800,color}}>{value}</div>
+      {sub&&<div style={{fontSize:11,color:"#64748b",marginTop:4}}>{sub}</div>}
+    </div>
+  );
+
   return(
-    <div style={{fontFamily:"'Inter',system-ui,sans-serif",minHeight:"100vh",background:"#0f172a",color:"white",padding:"0 0 40px"}}>
+    <div style={{fontFamily:"'Inter',system-ui,sans-serif",minHeight:"100vh",background:"#0f172a",color:"white",padding:"0 0 40px",maxWidth:700,margin:"0 auto"}}>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
       <div style={{padding:"20px 20px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,0.1)"}}>
         <div>
@@ -719,7 +755,106 @@ function SuperAdminApp({user,onSignOut}){
 
       {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:999,padding:"10px 20px",borderRadius:20,fontSize:14,fontWeight:500,background:"white",color:"#0f172a",whiteSpace:"nowrap"}}>{toast}</div>}
 
+      {/* Tab nav */}
+      <div style={{display:"flex",gap:4,padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
+        {[["dashboard","📊 Dashboard"],["houses","🏠 Houses"],["support","💬 Support"]].map(([t,label])=>(
+          <button key={t} onClick={()=>setTab(t)} style={{padding:"8px 16px",borderRadius:99,border:"none",background:tab===t?"white":"transparent",color:tab===t?"#0f172a":"#94a3b8",fontWeight:600,fontSize:13,cursor:"pointer"}}>{label}</button>
+        ))}
+      </div>
+
       <div style={{padding:"20px 16px"}}>
+
+      {/* DASHBOARD TAB */}
+      {tab==="dashboard"&&(
+        <div>
+          <h2 style={{margin:"0 0 16px",fontSize:18,fontWeight:700}}>System Overview</h2>
+
+          {stats?(
+            <>
+              {/* Houses stats */}
+              <div style={{fontSize:11,color:"#64748b",fontWeight:600,letterSpacing:"0.1em",marginBottom:8}}>HOUSES</div>
+              <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+                <StatCard label="TOTAL HOUSES" value={stats.totalHouses}/>
+                <StatCard label="ACTIVE" value={stats.activeHouses} color="#22c55e"/>
+                <StatCard label="SUSPENDED" value={stats.suspendedHouses} color="#ef4444"/>
+              </div>
+
+              {/* Members stats */}
+              <div style={{fontSize:11,color:"#64748b",fontWeight:600,letterSpacing:"0.1em",marginBottom:8}}>MEMBERS</div>
+              <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+                <StatCard label="TOTAL MEMBERS" value={stats.totalMembers}/>
+                <StatCard label="APPROVED" value={stats.approvedMembers} color="#22c55e"/>
+                <StatCard label="PENDING" value={stats.pendingMembers} color="#f97316"/>
+              </div>
+
+              {/* Bills stats */}
+              <div style={{fontSize:11,color:"#64748b",fontWeight:600,letterSpacing:"0.1em",marginBottom:8}}>BILLS & SETTLEMENTS</div>
+              <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+                <StatCard label="TOTAL BILLS" value={stats.totalBills}/>
+                <StatCard label="TOTAL SPENT" value={`€${stats.totalSpent.toFixed(2)}`} color="#60a5fa"/>
+                <StatCard label="TOTAL SETTLED" value={`€${stats.totalSettled.toFixed(2)}`} color="#22c55e"/>
+              </div>
+              <div style={{display:"flex",gap:10,marginBottom:24,flexWrap:"wrap"}}>
+                <StatCard label="SETTLEMENTS" value={stats.totalSettlements}/>
+                <StatCard label="💵 CASH" value={stats.cashSettlements}/>
+                <StatCard label="💜 REVOLUT" value={stats.revolutSettlements}/>
+              </div>
+
+              {/* Quick actions */}
+              <div style={{fontSize:11,color:"#64748b",fontWeight:600,letterSpacing:"0.1em",marginBottom:8}}>QUICK ACTIONS</div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <button onClick={()=>{loadStats();loadHouses();showToast("Refreshed ✓");}} style={{padding:"12px 20px",borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",background:"transparent",color:"white",fontWeight:600,fontSize:13,cursor:"pointer"}}>↺ Refresh Data</button>
+                <button onClick={()=>setTab("houses")} style={{padding:"12px 20px",borderRadius:12,border:"none",background:"white",color:"#0f172a",fontWeight:600,fontSize:13,cursor:"pointer"}}>Manage Houses →</button>
+                <button onClick={()=>setTab("support")} style={{padding:"12px 20px",borderRadius:12,border:"none",background:"#7c3aed",color:"white",fontWeight:600,fontSize:13,cursor:"pointer"}}>💬 Support</button>
+              </div>
+            </>
+          ):(
+            <div style={{textAlign:"center",padding:"3rem",color:"#94a3b8"}}>Loading stats…</div>
+          )}
+        </div>
+      )}
+
+      {/* SUPPORT TAB */}
+      {tab==="support"&&(
+        <div>
+          <h2 style={{margin:"0 0 6px",fontSize:18,fontWeight:700}}>Support Centre</h2>
+          <p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>Help users and manage support requests</p>
+
+          <div style={{background:"rgba(255,255,255,0.07)",borderRadius:16,padding:"20px",marginBottom:16}}>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>📧 Send Message to All Users</div>
+            <div style={{fontSize:12,color:"#94a3b8",marginBottom:12}}>Broadcast an important message or update</div>
+            <textarea
+              value={supportMsg}
+              onChange={e=>setSupportMsg(e.target.value)}
+              placeholder="Type your message here..."
+              style={{width:"100%",padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"white",fontSize:13,resize:"vertical",minHeight:100,fontFamily:"inherit",boxSizing:"border-box"}}
+            />
+            <button onClick={()=>{if(supportMsg.trim()){showToast("Message sent ✓");setSupportMsg("");}}} style={{marginTop:10,padding:"11px 20px",borderRadius:10,border:"none",background:"white",color:"#0f172a",fontWeight:700,fontSize:13,cursor:"pointer"}}>Send Message</button>
+          </div>
+
+          <div style={{background:"rgba(255,255,255,0.07)",borderRadius:16,padding:"20px",marginBottom:16}}>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>📞 Contact Support</div>
+            <div style={{fontSize:12,color:"#94a3b8",marginBottom:12}}>Get help from the MyHouseExpenses team</div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <button onClick={()=>window.open("mailto:support@myhouseexpenses.app","_blank")} style={{padding:"11px 16px",borderRadius:10,border:"none",background:"#ea4335",color:"white",fontWeight:600,fontSize:13,cursor:"pointer"}}>📧 Email Support</button>
+              <button onClick={()=>window.open("https://wa.me/?text=Hi, I need help with MyHouseExpenses","_blank")} style={{padding:"11px 16px",borderRadius:10,border:"none",background:"#25d366",color:"white",fontWeight:600,fontSize:13,cursor:"pointer"}}>💬 WhatsApp</button>
+            </div>
+          </div>
+
+          <div style={{background:"rgba(255,255,255,0.07)",borderRadius:16,padding:"20px"}}>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>📋 System Info</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8,fontSize:13,color:"#94a3b8"}}>
+              <div style={{display:"flex",justifyContent:"space-between"}}><span>App Version</span><span style={{color:"white",fontWeight:600}}>1.0.0</span></div>
+              <div style={{display:"flex",justifyContent:"space-between"}}><span>Database</span><span style={{color:"#22c55e",fontWeight:600}}>● Online</span></div>
+              <div style={{display:"flex",justifyContent:"space-between"}}><span>Hosting</span><span style={{color:"#22c55e",fontWeight:600}}>● Vercel</span></div>
+              <div style={{display:"flex",justifyContent:"space-between"}}><span>Admin Email</span><span style={{color:"white",fontWeight:600}}>{user?.email}</span></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HOUSES TAB */}
+      {tab==="houses"&&(
 
         <button onClick={()=>setShowInvite(!showInvite)} style={{width:"100%",marginBottom:16,padding:"13px",borderRadius:14,border:"none",background:"white",color:"#0f172a",fontWeight:700,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -786,6 +921,9 @@ function SuperAdminApp({user,onSignOut}){
             ))}
           </div>
         )}
+        </div>
+      )}
+
       </div>
     </div>
   );
@@ -884,7 +1022,7 @@ function ProfileView({myPerson,onSave,onSignOut,onClose}){
 // ── SETTLE UP BUTTON ─────────────────────────────────────────────
 function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}){
   const [showSheet,setShowSheet]=useState(false);
-  const [paying,setPaying]=useState(null); // person being paid
+  const [paying,setPaying]=useState(null);
   const [marking,setMarking]=useState(false);
 
   const approved=persons.filter(p=>p.is_approved);
@@ -893,14 +1031,15 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
 
   const creditors=approved.filter(p=>p.id!==myPerson?.id).map(p=>{
     const pTotal=bills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0);
-    return {...p,paidExtra:pTotal-share};
+    const alreadyPaid=(settlements||[]).filter(s=>s.from_person?.id===myPerson?.id&&s.to_person?.id===p.id).reduce((s,x)=>s+Number(x.amount),0);
+    return {...p,paidExtra:Math.max(0,(pTotal-share)-alreadyPaid)};
   }).filter(p=>p.paidExtra>0).sort((a,b)=>b.paidExtra-a.paidExtra);
 
-
+  const mySettlements=(settlements||[]).filter(s=>s.from_person?.id===myPerson?.id||s.to_person?.id===myPerson?.id).slice(0,5);
   const openSheet=()=>{ setShowSheet(true); };
 
   const payByRevolut=(person)=>{
-    const amount=(Math.round(Math.min(iOwe,person.paidExtra)*100)/100).toFixed(2);
+    const amount=Math.min(iOwe,person.paidExtra).toFixed(2);
     // If they have a revolut link use it, otherwise just open Revolut app
     if(person.revolut_link){
       const base=person.revolut_link.replace(/\/$/,"");
@@ -923,7 +1062,7 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
     }]);
     setMarking(false);
     setPaying(null);
-    setTimeout(()=>reload(), 500);
+    reload();
   };
 
   const methodLabel=(m)=>m==="revolut"?"💜 Revolut":"💵 Cash";
@@ -964,7 +1103,7 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
                 {creditors.map(p=>{
-                  const amount=Math.round(Math.min(iOwe,p.paidExtra)*100)/100;
+                  const amount=Math.min(iOwe,p.paidExtra);
                   return(
                     <div key={p.id} style={{background:"#f8fafc",borderRadius:14,padding:"14px 16px"}}>
                       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
@@ -974,13 +1113,12 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
                           <div style={{fontSize:12,color:"#64748b"}}>You will pay <span style={{fontWeight:700,color:"#e11d48"}}>{fmt(amount)}</span></div>
                         </div>
                       </div>
-                      {/* Payment options */}
-                      <div style={{display:"flex",gap:8}}>
-                        <button onClick={()=>markPaid(p,amount,"cash")} disabled={marking} style={{flex:1,padding:"11px",borderRadius:10,border:"none",background:"#16a34a",color:"white",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-                          💵 Paid Cash
+                      <div style={{display:"flex",gap:8,marginTop:4,maxWidth:400}}>
+                        <button onClick={()=>markPaid(p,amount,"cash")} disabled={marking} style={{flex:1,padding:"9px 8px",borderRadius:10,border:"none",background:"#16a34a",color:"white",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                          💵 Cash
                         </button>
-                        <button onClick={()=>payByRevolut(p)} style={{flex:1,padding:"11px",borderRadius:10,border:"none",background:"#7c3aed",color:"white",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-                          💜 Pay Revolut
+                        <button onClick={()=>payByRevolut(p)} style={{flex:1,padding:"9px 8px",borderRadius:10,border:"none",background:"#7c3aed",color:"white",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                          💜 Revolut
                         </button>
                       </div>
                     </div>
@@ -990,11 +1128,11 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
             )}
 
             {/* Settlement history */}
-            {settlements.length>0&&(
+            {mySettlements.length>0&&(
               <>
                 <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:"#94a3b8",marginBottom:10}}>RECENT SETTLEMENTS</div>
                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {settlements.map(s=>(
+                  {mySettlements.map(s=>(
                     <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"#f8fafc",borderRadius:10}}>
                       <div style={{width:28,height:28,borderRadius:"50%",background:s.from_person?.color||"#94a3b8",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"white"}}>{initials(s.from_person?.name||"?")}</div>
                       <div style={{flex:1,fontSize:13}}>
@@ -1017,7 +1155,7 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
 }
 
 // ── BILLS VIEW ───────────────────────────────────────────────────
-function BillsView({bills,persons,categories,myPerson,myHouse,settlements=[],reload,showToast,onAdd}){
+function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload,showToast,onAdd}){
   const [filterPerson,setFilterPerson]=useState("");
   const [filterCat,setFilterCat]=useState("");
   const filtered=bills.filter(b=>{
@@ -1025,17 +1163,20 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements=[],rel
     if(filterCat&&b.categories?.id!==filterCat)return false;
     return true;
   });
+  const approved=persons.filter(p=>p.is_approved);
   const grandTotal=bills.reduce((s,b)=>s+Number(b.amount),0);
   const myTotal=bills.filter(b=>b.persons?.id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
-  const approvedCount=persons.filter(p=>p.is_approved).length;
-  const share=approvedCount>0?grandTotal/approvedCount:0;
-  const iPaid=(settlements||[]).filter(s=>s.from_person?.id===myPerson?.id||s.from_person_id===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
-  const iReceived=(settlements||[]).filter(s=>s.to_person?.id===myPerson?.id||s.to_person_id===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
-  const iOwe=Math.max(0,(share-myTotal)-iPaid);
-  const theyOwe=Math.max(0,(myTotal-share)-iReceived);
+  const share=approved.length>0?grandTotal/approved.length:0;
+  // Subtract settlements from balance
+  const iReceived=(settlements||[]).filter(s=>s.to_person?.id===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
+  const iPaid=(settlements||[]).filter(s=>s.from_person?.id===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
+  const rawOwe=Math.max(0,share-myTotal);
+  const rawOwed=Math.max(0,myTotal-share);
+  const iOwe=Math.max(0,rawOwe-iPaid);
+  const theyOwe=Math.max(0,rawOwed-iReceived);
   return(
     <div>
-      <div style={{margin:"0 16px 20px",borderRadius:20,background:"#0f172a",padding:"24px 20px",color:"white"}}>
+      <div style={{margin:"0 0 20px",borderRadius:20,background:"#0f172a",padding:"24px 28px",color:"white"}}>
         <div style={{fontSize:11,fontWeight:600,letterSpacing:"0.1em",color:"#94a3b8",marginBottom:8}}>CURRENT BALANCE</div>
         <div style={{display:"flex",alignItems:"baseline",gap:10,marginBottom:20}}>
           <span style={{fontSize:42,fontWeight:700,letterSpacing:"-1px"}}>{fmt(Math.abs(iOwe-theyOwe))}</span>
@@ -1132,7 +1273,6 @@ function BillForm({myPerson,myHouse,categories,onSave,onCancel}){
   };
   const save=async()=>{
     if(!form.merchant||!form.amount)return alert("Please fill in merchant and amount.");
-    if(!imageFile)return alert("A photo of the bill is required.");
     setSaving(true);
     localStorage.setItem("lastCategoryId",form.category_id);
     let image_url=null;
@@ -1351,4 +1491,3 @@ function EditBillForm({bill,persons,categories,onSave,onCancel}){
     </div>
   );
 }
-// Thu 30 Apr 2026 21:22:59 IST
