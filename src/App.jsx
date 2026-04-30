@@ -419,7 +419,7 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
       {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:999,padding:"10px 20px",borderRadius:20,fontSize:14,fontWeight:500,background:"#0f172a",color:"white",whiteSpace:"nowrap"}}>{toast}</div>}
 
       {loading?<div style={{textAlign:"center",padding:"4rem",color:"#94a3b8"}}>Loading…</div>
-        :view==="Bills"?<BillsView bills={bills} persons={persons} categories={categories} myPerson={myPerson} reload={loadAll} showToast={showToast} onAdd={()=>setShowForm(true)}/>
+        :view==="Bills"?<BillsView bills={bills} persons={persons} categories={categories} myPerson={myPerson} myHouse={myHouse} reload={loadAll} showToast={showToast} onAdd={()=>setShowForm(true)}/>
         :view==="People"?<PeopleView persons={persons} bills={bills}/>
         :view==="Admin"?<HouseAdminView house={myHouse} persons={persons} bills={bills} categories={categories} reload={loadAll} showToast={showToast}/>
         :<ReportView bills={bills} persons={persons} categories={categories}/>
@@ -1024,7 +1024,7 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,reload}){
 }
 
 // ── BILLS VIEW ───────────────────────────────────────────────────
-function BillsView({bills,persons,categories,myPerson,reload,showToast,onAdd}){
+function BillsView({bills,persons,categories,myPerson,myHouse,reload,showToast,onAdd}){
   const [filterPerson,setFilterPerson]=useState("");
   const [filterCat,setFilterCat]=useState("");
   const filtered=bills.filter(b=>{
