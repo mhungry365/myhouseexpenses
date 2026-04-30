@@ -1014,7 +1014,7 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
 }
 
 // ── BILLS VIEW ───────────────────────────────────────────────────
-function BillsView({bills,persons,categories,myPerson,myHouse,reload,showToast,onAdd}){
+function BillsView({bills,persons,categories,myPerson,myHouse,settlements=[],reload,showToast,onAdd}){
   const [filterPerson,setFilterPerson]=useState("");
   const [filterCat,setFilterCat]=useState("");
   const filtered=bills.filter(b=>{
