@@ -921,7 +921,7 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
     }]);
     setMarking(false);
     setPaying(null);
-    reload();
+    setTimeout(()=>reload(), 500);
   };
 
   const methodLabel=(m)=>m==="revolut"?"💜 Revolut":"💵 Cash";
