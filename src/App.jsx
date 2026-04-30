@@ -360,12 +360,13 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
 
   const loadAll=useCallback(async()=>{
     setLoading(true);
-    const[{data:p},{data:c},{data:b}]=await Promise.all([
+    const[{data:p},{data:c},{data:b},{data:s}]=await Promise.all([
       supabase.from("persons").select("*").eq("house_id",myHouse.id).order("created_at"),
       supabase.from("categories").select("*").order("name"),
       supabase.from("bills").select("*, persons(id,name,color), categories(id,name,icon)").eq("house_id",myHouse.id).order("bill_date",{ascending:false}),
+      supabase.from("settlements").select("*, from_person:from_person_id(id,name,color), to_person:to_person_id(id,name,color)").eq("house_id",myHouse.id).order("settled_at",{ascending:false}),
     ]);
-    setPersons(p||[]);setCategories(c||[]);setBills(b||[]);
+    setPersons(p||[]);setCategories(c||[]);setBills(b||[]);setSettlements(s||[]);
     setLoading(false);
   },[myHouse.id]);
 
