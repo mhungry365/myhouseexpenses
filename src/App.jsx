@@ -894,16 +894,8 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
     return {...p,paidExtra:pTotal-share};
   }).filter(p=>p.paidExtra>0).sort((a,b)=>b.paidExtra-a.paidExtra);
 
-  const loadSettlements=async()=>{
-    const{data}=await supabase.from("settlements")
-      .select("*, from_person:from_person_id(name,color), to_person:to_person_id(name,color)")
-      .eq("house_id",myHouse.id)
-      .order("settled_at",{ascending:false})
-      .limit(10);
-    setSettlements(data||[]);
-  };
 
-  const openSheet=()=>{ loadSettlements(); setShowSheet(true); };
+  const openSheet=()=>{ setShowSheet(true); };
 
   const payByRevolut=(person)=>{
     const amount=Math.min(iOwe,person.paidExtra).toFixed(2);
