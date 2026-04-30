@@ -396,11 +396,11 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
     ];
 
   return(
-    <div style={{fontFamily:"'Inter',system-ui,sans-serif",minHeight:"100vh",background:"#f4f4f0",color:"#0f172a",maxWidth:430,margin:"0 auto",position:"relative",paddingBottom:80}}>
+    <div style={{fontFamily:"'Inter',system-ui,sans-serif",minHeight:"100vh",background:"#f4f4f0",color:"#0f172a",position:"relative",paddingBottom:80}}>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 
       {/* Header */}
-      <div style={{background:"#f4f4f0",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div style={{background:"#f4f4f0",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",maxWidth:900,margin:"0 auto"}}>
         <div>
           <div style={{fontWeight:800,fontSize:18,letterSpacing:"-0.3px"}}>🏠 {myHouse.name}</div>
           <div style={{fontSize:11,color:"#94a3b8",fontWeight:500,marginTop:1}}>Code: {myHouse.join_code}</div>
