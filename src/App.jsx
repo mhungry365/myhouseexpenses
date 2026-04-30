@@ -704,7 +704,7 @@ function SuperAdminApp({user,onSignOut}){
   const shareEmail=()=>window.open(`mailto:?subject=Manage your house expenses with MyHouseExpenses&body=${encodeURIComponent(inviteMsg)}`,"_blank");
 
   return(
-    <div style={{fontFamily:"'Inter',system-ui,sans-serif",minHeight:"100vh",background:"#0f172a",color:"white",maxWidth:430,margin:"0 auto",padding:"0 0 40px"}}>
+    <div style={{fontFamily:"'Inter',system-ui,sans-serif",minHeight:"100vh",background:"#0f172a",color:"white",padding:"0 0 40px"}}>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
       <div style={{padding:"20px 20px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,0.1)"}}>
         <div>
