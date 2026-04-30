@@ -1029,7 +1029,6 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements=[],rel
   const myTotal=bills.filter(b=>b.persons?.id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
   const approvedCount=persons.filter(p=>p.is_approved).length;
   const share=approvedCount>0?grandTotal/approvedCount:0;
-  console.log("settlements in BillsView:", settlements, "myPerson:", myPerson?.id);
   const iPaid=(settlements||[]).filter(s=>s.from_person?.id===myPerson?.id||s.from_person_id===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
   const iReceived=(settlements||[]).filter(s=>s.to_person?.id===myPerson?.id||s.to_person_id===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
   const iOwe=Math.max(0,(share-myTotal)-iPaid);
