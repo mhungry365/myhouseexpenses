@@ -367,7 +367,18 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut}){
     setLoading(false);
   },[myHouse.id]);
 
-  useEffect(()=>{loadAll();},[loadAll]);
+  useEffect(()=>{
+    loadAll();
+
+    // Real-time updates — refresh when anyone adds/edits/deletes a bill
+    const billsSub=supabase
+      .channel("bills-changes")
+      .on("postgres_changes",{event:"*",schema:"public",table:"bills",filter:`house_id=eq.${myHouse.id}`},()=>loadAll())
+      .on("postgres_changes",{event:"*",schema:"public",table:"persons",filter:`house_id=eq.${myHouse.id}`},()=>loadAll())
+      .subscribe();
+
+    return ()=>supabase.removeChannel(billsSub);
+  },[loadAll]);
 
   const tabs=isAdmin
     ?[
@@ -392,10 +403,15 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut}){
           <div style={{fontWeight:800,fontSize:18,letterSpacing:"-0.3px"}}>🏠 {myHouse.name}</div>
           <div style={{fontSize:11,color:"#94a3b8",fontWeight:500,marginTop:1}}>Code: {myHouse.join_code}</div>
         </div>
-        <button onClick={onSignOut} style={{display:"flex",alignItems:"center",gap:8,background:"white",border:"1.5px solid #e2e8f0",borderRadius:99,padding:"6px 12px 6px 6px",cursor:"pointer"}}>
-          <div style={{width:28,height:28,borderRadius:"50%",background:myPerson?.color||"#0f172a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"white"}}>{initials(myPerson?.name)}</div>
-          <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>{myPerson?.name?.split(" ")[0]}{isAdmin?" 👑":""}</span>
-        </button>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={loadAll} title="Refresh" style={{width:36,height:36,borderRadius:99,border:"1.5px solid #e2e8f0",background:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#475569"}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          </button>
+          <button onClick={onSignOut} style={{display:"flex",alignItems:"center",gap:8,background:"white",border:"1.5px solid #e2e8f0",borderRadius:99,padding:"6px 12px 6px 6px",cursor:"pointer"}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:myPerson?.color||"#0f172a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"white"}}>{initials(myPerson?.name)}</div>
+            <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>{myPerson?.name?.split(" ")[0]}{isAdmin?" 👑":""}</span>
+          </button>
+        </div>
       </div>
 
       {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:999,padding:"10px 20px",borderRadius:20,fontSize:14,fontWeight:500,background:"#0f172a",color:"white",whiteSpace:"nowrap"}}>{toast}</div>}
@@ -781,7 +797,7 @@ function BillsView({bills,persons,categories,myPerson,reload,showToast,onAdd}){
         <div style={{fontSize:11,fontWeight:600,letterSpacing:"0.1em",color:"#94a3b8",marginBottom:8}}>CURRENT BALANCE</div>
         <div style={{display:"flex",alignItems:"baseline",gap:10,marginBottom:20}}>
           <span style={{fontSize:42,fontWeight:700,letterSpacing:"-1px"}}>{fmt(Math.abs(iOwe-theyOwe))}</span>
-          <span style={{fontSize:16,fontWeight:600,color:iOwe>theyOwe?"#f97316":"#22c55e"}}>{iOwe>theyOwe?"You owe":"You're owed"}</span>
+          <span style={{fontSize:16,fontWeight:600,color:iOwe>theyOwe?"#f97316":"#22c55e"}}>{iOwe>theyOwe?"You will pay":"You will get"}</span>
         </div>
         <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,0.1)",paddingTop:16,marginBottom:20}}>
           <div style={{flex:1,borderRight:"1px solid rgba(255,255,255,0.1)",paddingRight:16}}>
@@ -815,7 +831,7 @@ function BillsView({bills,persons,categories,myPerson,reload,showToast,onAdd}){
         </div>
         {filtered.length===0?<div style={{textAlign:"center",padding:"3rem",color:"#94a3b8",fontSize:14}}>No bills yet. Tap + to add one!</div>:(
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {filtered.map(b=><TransactionCard key={b.id} bill={b} persons={persons}/>)}
+            {filtered.map(b=><TransactionCard key={b.id} bill={b} persons={persons} allBills={bills}/>)}
           </div>
         )}
       </div>
@@ -823,10 +839,11 @@ function BillsView({bills,persons,categories,myPerson,reload,showToast,onAdd}){
   );
 }
 
-function TransactionCard({bill,persons}){
+function TransactionCard({bill,persons,allBills}){
   const c=bill.categories;const p=bill.persons;
   const cs=getCatStyle(c?.name);
   const [imgOpen,setImgOpen]=useState(false);
+  const personTotal=allBills?allBills.filter(b=>b.persons?.id===p?.id).reduce((s,b)=>s+Number(b.amount),0):0;
   return(
     <>
       <div style={{background:"white",borderRadius:16,padding:"16px",display:"flex",alignItems:"center",gap:14}}>
@@ -836,6 +853,7 @@ function TransactionCard({bill,persons}){
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{bill.merchant}</div>
           <div style={{fontSize:13,color:"#64748b"}}>{p?`${p.name} paid`:"Unknown"} · {new Date(bill.bill_date+"T00:00:00").toLocaleDateString("en-IE",{month:"short",day:"numeric"})}</div>
+          {p&&personTotal>0&&<div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>{p.name}'s total spend: <span style={{fontWeight:600,color:"#475569"}}>{fmt(personTotal)}</span></div>}
         </div>
         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
           <span style={{fontWeight:700,fontSize:16,fontFamily:"monospace"}}>{fmtShort(bill.amount)}</span>
