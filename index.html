@@ -2,13 +2,48 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="HomeExpenses" />
+    <meta name="description" content="Split bills with your housemates" />
+
     <title>HomeExpenses</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Apple touch icons -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png" />
+
+    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>" />
-    <style>*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; } body { font-family: 'Inter', system-ui, sans-serif; } input, select, textarea, button { font-family: inherit; }</style>
+
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html { height: 100%; }
+      body { font-family: 'Inter', system-ui, sans-serif; height: 100%; background: #0f172a; }
+      #root { height: 100%; }
+      input, select, textarea, button { font-family: inherit; }
+      /* Safe area for iPhone notch */
+      body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+    </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <!-- Register Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('SW registered:', reg.scope))
+            .catch(err => console.log('SW error:', err));
+        });
+      }
+    </script>
   </body>
 </html>
