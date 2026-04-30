@@ -879,7 +879,7 @@ function ProfileView({myPerson,onSave,onSignOut,onClose}){
 }
 
 // ── SETTLE UP BUTTON ─────────────────────────────────────────────
-function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,reload}){
+function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}){
   const [showSheet,setShowSheet]=useState(false);
   const [settlements,setSettlements]=useState([]);
   const [paying,setPaying]=useState(null); // person being paid
@@ -1056,7 +1056,7 @@ function BillsView({bills,persons,categories,myPerson,myHouse,reload,showToast,o
           </div>
         </div>
         <div style={{display:"flex",gap:10}}>
-          <SettleUpButton persons={persons} iOwe={iOwe} myPerson={myPerson} bills={bills} myHouse={myHouse} reload={reload}/>
+          <SettleUpButton persons={persons} iOwe={iOwe} myPerson={myPerson} bills={bills} myHouse={myHouse} settlements={settlements||[]} reload={reload}/>
           <button style={{flex:1,padding:"13px",borderRadius:12,background:"#1e293b",border:"none",color:"white",fontWeight:700,fontSize:15,cursor:"pointer"}}>Remind All</button>
         </div>
       </div>
