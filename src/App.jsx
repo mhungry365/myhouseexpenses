@@ -987,11 +987,11 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
             )}
 
             {/* Settlement history */}
-            {settlements.length>0&&(
+            {(settlements||[]).length>0&&(
               <>
                 <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:"#94a3b8",marginBottom:10}}>RECENT SETTLEMENTS</div>
                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {settlements.map(s=>(
+                  {(settlements||[]).map(s=>(
                     <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"#f8fafc",borderRadius:10}}>
                       <div style={{width:28,height:28,borderRadius:"50%",background:s.from_person?.color||"#94a3b8",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"white"}}>{initials(s.from_person?.name||"?")}</div>
                       <div style={{flex:1,fontSize:13}}>
@@ -1024,9 +1024,11 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements=[],rel
   });
   const grandTotal=bills.reduce((s,b)=>s+Number(b.amount),0);
   const myTotal=bills.filter(b=>b.persons?.id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
-  const share=persons.length>0?grandTotal/persons.length:0;
-  const theyOwe=Math.max(0,myTotal-share);
-  const iOwe=Math.max(0,share-myTotal);
+  const share=approved.length>0?grandTotal/approved.length:0;
+  const iPaid=settlements.filter(s=>s.from_person_id===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
+  const iReceived=settlements.filter(s=>s.to_person_id===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
+  const iOwe=Math.max(0,(share-myTotal)-iPaid);
+  const theyOwe=Math.max(0,(myTotal-share)-iReceived);
   return(
     <div>
       <div style={{margin:"0 16px 20px",borderRadius:20,background:"#0f172a",padding:"24px 20px",color:"white"}}>
