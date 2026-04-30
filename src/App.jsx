@@ -900,7 +900,7 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
   const openSheet=()=>{ setShowSheet(true); };
 
   const payByRevolut=(person)=>{
-    const amount=Math.min(iOwe,person.paidExtra).toFixed(2);
+    const amount=(Math.round(Math.min(iOwe,person.paidExtra)*100)/100).toFixed(2);
     // If they have a revolut link use it, otherwise just open Revolut app
     if(person.revolut_link){
       const base=person.revolut_link.replace(/\/$/,"");
@@ -964,7 +964,7 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
                 {creditors.map(p=>{
-                  const amount=Math.min(iOwe,p.paidExtra);
+                  const amount=Math.round(Math.min(iOwe,p.paidExtra)*100)/100;
                   return(
                     <div key={p.id} style={{background:"#f8fafc",borderRadius:14,padding:"14px 16px"}}>
                       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
