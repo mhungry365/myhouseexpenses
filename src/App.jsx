@@ -431,7 +431,7 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
         </button>
       )}
 
-      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"white",borderTop:"1px solid #f1f5f9",display:"flex",zIndex:100}}>
+      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"white",borderTop:"1px solid #f1f5f9",display:"flex",justifyContent:"center",zIndex:100}}>
         {tabs.map(tab=>(
           <button key={tab.id} onClick={()=>setView(tab.id)} style={{flex:1,padding:"12px 0 16px",border:"none",background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,color:view===tab.id?"#0f172a":"#94a3b8"}}>
             {tab.icon}
