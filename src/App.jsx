@@ -149,7 +149,7 @@ function AuthScreen(){
 
   const forgotPassword=async()=>{
     if(!email.trim()||!email.includes("@"))return setError("Please enter your email address first.");
-    const{error}=await supabase.auth.resetPasswordForEmail(email.trim(),{redirectTo:"https://homeexpenses-ten.vercel.app"});
+    const{error}=await supabase.auth.resetPasswordForEmail(email.trim(),{redirectTo:"https://myhouseexpenses.vercel.app"});
     if(error)setError(friendlyError(error.message));
     else setForgotSent(true);
   };
@@ -484,7 +484,7 @@ function HouseAdminView({house,persons,bills,categories,reload,showToast}){
   const approvedPersons=persons.filter(p=>p.is_approved);
   const [showInvite,setShowInvite]=useState(false);
   const [copied,setCopied]=useState(false);
-  const appUrl="https://homeexpenses-ten.vercel.app";
+  const appUrl="https://myhouseexpenses.vercel.app";
   const inviteLink=`${appUrl}?code=${house.join_code}`;
   const inviteMsg=`Hey! I'm using HomeExpenses to track our shared bills. Join our house "${house.name}" using this link:\n\n${inviteLink}\n\nOr enter the code manually: ${house.join_code}`;
 
@@ -668,7 +668,7 @@ function SuperAdminApp({user,onSignOut}){
     showToast("House deleted");loadHouses();
   };
 
-  const appUrl="https://homeexpenses-ten.vercel.app";
+  const appUrl="https://myhouseexpenses.vercel.app";
   const [showInvite,setShowInvite]=useState(false);
   const [copied,setCopied]=useState(false);
   const inviteMsg=`Hey! I'd like you to manage your house expenses using HomeExpenses.\n\nSign up here: ${appUrl}\n\n1. Create an account\n2. Click "Create a House"\n3. Invite your housemates using the join code\n\nIt's free and easy to use!`;
