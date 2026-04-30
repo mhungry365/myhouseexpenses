@@ -358,6 +358,7 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
   const [toast,setToast]=useState(null);
   const showToast=(msg)=>{setToast(msg);setTimeout(()=>setToast(null),3000);};
 
+  const [settlements,setSettlements]=useState([]);
   const loadAll=useCallback(async()=>{
     setLoading(true);
     const[{data:p},{data:c},{data:b},{data:s}]=await Promise.all([
