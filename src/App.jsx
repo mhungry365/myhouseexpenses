@@ -1024,9 +1024,11 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements=[],rel
   });
   const grandTotal=bills.reduce((s,b)=>s+Number(b.amount),0);
   const myTotal=bills.filter(b=>b.persons?.id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
-  const share=persons.length>0?grandTotal/persons.length:0;
-  const theyOwe=Math.max(0,myTotal-share);
-  const iOwe=Math.max(0,share-myTotal);
+  const share=approved.length>0?grandTotal/approved.length:0;
+  const iPaid=settlements.filter(s=>s.from_person_id===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
+  const iReceived=settlements.filter(s=>s.to_person_id===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
+  const iOwe=Math.max(0,(share-myTotal)-iPaid);
+  const theyOwe=Math.max(0,(myTotal-share)-iReceived);
   return(
     <div>
       <div style={{margin:"0 16px 20px",borderRadius:20,background:"#0f172a",padding:"24px 20px",color:"white"}}>
