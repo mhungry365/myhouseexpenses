@@ -881,7 +881,7 @@ function ProfileView({myPerson,onSave,onSignOut,onClose}){
 // ── SETTLE UP BUTTON ─────────────────────────────────────────────
 function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}){
   const [showSheet,setShowSheet]=useState(false);
-  const [settlements,setSettlements]=useState([]);
+
   const [paying,setPaying]=useState(null); // person being paid
   const [marking,setMarking]=useState(false);
 
