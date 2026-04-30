@@ -921,7 +921,6 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
     }]);
     setMarking(false);
     setPaying(null);
-    loadSettlements();
     reload();
   };
 
