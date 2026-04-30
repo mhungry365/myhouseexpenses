@@ -1132,6 +1132,7 @@ function BillForm({myPerson,myHouse,categories,onSave,onCancel}){
   };
   const save=async()=>{
     if(!form.merchant||!form.amount)return alert("Please fill in merchant and amount.");
+    if(!imageFile)return alert("A photo of the bill is required.");
     setSaving(true);
     localStorage.setItem("lastCategoryId",form.category_id);
     let image_url=null;
