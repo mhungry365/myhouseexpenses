@@ -1103,7 +1103,8 @@ function ReportView({bills,persons,categories}){
   const monthBills=bills.filter(b=>b.bill_date.startsWith(selMonth));
   const grandTotal=monthBills.reduce((s,b)=>s+Number(b.amount),0);
   const approved=persons.filter(p=>p.is_approved);
-  const personTotals=approved.map(p=>({...p,total:monthBills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0)})).filter(p=>p.total>0);
+  const personTotals=approved.map(p=>({...p,total:monthBills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0)}));
+  const perPersonShare=approved.length>0?grandTotal/approved.length:0;
   const catTotals=categories.map(c=>({...c,total:monthBills.filter(b=>b.categories?.id===c.id).reduce((s,b)=>s+Number(b.amount),0)})).filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
   return(
     <div style={{padding:"0 16px"}}>
@@ -1122,7 +1123,7 @@ function ReportView({bills,persons,categories}){
             <div style={{display:"flex",gap:16}}>
               <div><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>BILLS</div><div style={{fontWeight:700}}>{monthBills.length}</div></div>
               <div><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>AVG BILL</div><div style={{fontWeight:700}}>{fmt(grandTotal/monthBills.length)}</div></div>
-              {approved.length>0&&<div><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>PER PERSON</div><div style={{fontWeight:700}}>{fmt(grandTotal/approved.length)}</div></div>}
+              {approved.length>0&&<div><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>FAIR SHARE</div><div style={{fontWeight:700}}>{fmt(grandTotal/approved.length)}</div></div>}
             </div>
           </div>
           <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:"#94a3b8",marginBottom:10}}>BY HOUSEMATE</div>
