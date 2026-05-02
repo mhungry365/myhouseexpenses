@@ -1132,11 +1132,17 @@ function ReportView({bills,persons,categories}){
               <div key={p.id} style={{background:"white",borderRadius:14,padding:"14px 16px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                   <div style={{width:34,height:34,borderRadius:"50%",background:p.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"white"}}>{initials(p.name)}</div>
-                  <span style={{fontWeight:600,flex:1}}>{p.name}</span>
-                  <span style={{fontWeight:700,fontSize:16,fontFamily:"monospace"}}>{fmt(p.total)}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:600}}>{p.name}</div>
+                    <div style={{fontSize:11,color:"#94a3b8"}}>Paid {fmt(p.total)}</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontWeight:700,fontSize:15,fontFamily:"monospace",color:(p.total-(grandTotal/approved.length))>=0?"#16a34a":"#e11d48"}}>{(p.total-(grandTotal/approved.length))>=0?"+":""}{fmt(p.total-(grandTotal/approved.length))}</div>
+                    <div style={{fontSize:11,color:"#94a3b8"}}>{(p.total-(grandTotal/approved.length))>=0?"to receive":"to pay"}</div>
+                  </div>
                 </div>
-                <div style={{height:5,borderRadius:99,background:"#f1f5f9",overflow:"hidden"}}>
-                  <div style={{height:"100%",width:`${(p.total/grandTotal)*100}%`,background:p.color,borderRadius:99}}/>
+                <div style={{height:4,borderRadius:99,background:"#f1f5f9",overflow:"hidden"}}>
+                  <div style={{height:"100%",width:grandTotal>0?`${(p.total/grandTotal)*100}%`:"0%",background:p.color,borderRadius:99}}/>
                 </div>
               </div>
             ))}
@@ -1157,7 +1163,7 @@ function ReportView({bills,persons,categories}){
           {personTotals.length>1&&<>
             <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:"#94a3b8",marginBottom:10}}>FAIRNESS SPLIT</div>
             <div style={{background:"white",borderRadius:14,overflow:"hidden",marginBottom:20}}>
-              {personTotals.map((p,i)=>{const diff=p.total-(grandTotal/personTotals.length);return(
+              {personTotals.map((p,i)=>{const diff=p.total-(grandTotal/approved.length);return(
                 <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"13px 16px",borderBottom:i<personTotals.length-1?"1px solid #f8fafc":"none"}}>
                   <div style={{width:28,height:28,borderRadius:"50%",background:p.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"white"}}>{initials(p.name)}</div>
                   <span style={{flex:1,fontSize:14,fontWeight:500}}>{p.name}</span>
