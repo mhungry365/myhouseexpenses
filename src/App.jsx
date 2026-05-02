@@ -408,7 +408,7 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
           <div style={{fontSize:11,color:"#94a3b8",fontWeight:500,marginTop:1}}>Code: {myHouse.join_code}</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-<button onClick={()=>{const h=document.documentElement;h.dataset.theme=h.dataset.theme==="light"?"dark":"light";}} title="Toggle theme" style={{width:36,height:36,borderRadius:99,border:"1.5px solid #e2e8f0",background:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🌓</button>
+<button onClick={()=>{const h=document.documentElement;document.body.style.cssText=document.body.style.background?"":"background:#0f172a;color:white";}} title="Toggle theme" style={{width:36,height:36,borderRadius:99,border:"1.5px solid #e2e8f0",background:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🌓</button>
           <button onClick={loadAll} title="Refresh" style={{width:36,height:36,borderRadius:99,border:"1.5px solid #e2e8f0",background:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#475569"}}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
           </button>
