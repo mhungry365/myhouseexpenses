@@ -855,7 +855,7 @@ function SuperAdminApp({user,onSignOut}){
 
       {/* HOUSES TAB */}
       {tab==="houses"&&(
-
+        <div>
         <button onClick={()=>setShowInvite(!showInvite)} style={{width:"100%",marginBottom:16,padding:"13px",borderRadius:14,border:"none",background:"white",color:"#0f172a",fontWeight:700,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           Invite a House Admin
