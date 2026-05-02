@@ -3,7 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = "https://jadopmcgrcoaltyzevhi.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphZG9wbWNncmNvYWx0eXpldmhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NDk0NzYsImV4cCI6MjA5MzEyNTQ3Nn0.uA4h2vb6V79Ip-CCzlLX7TxfSLSgxabONXr8VWTgTc8";
-const SUPER_ADMIN_EMAIL = "mhungry365@gmail.com";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const PERSON_COLORS = ["#0f172a","#f97316","#3b82f6","#22c55e","#a855f7","#ef4444","#14b8a6","#eab308","#ec4899","#06b6d4"];
@@ -33,7 +32,7 @@ export default function App() {
   const [myPerson,setMyPerson]=useState(null);
   const [myHouse,setMyHouse]=useState(null);
   const [authState,setAuthState]=useState("loading");
-  // loading|auth|create_house|join_house|pending|suspended|house_suspended|approved|house_admin|super_admin
+  // loading|auth|create_house|join_house|pending|suspended|house_suspended|approved|house_admin
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>{
@@ -50,11 +49,6 @@ export default function App() {
   },[]);
 
   const checkUser=async(user)=>{
-    // Super admin check
-    if(user.email===SUPER_ADMIN_EMAIL){
-      setAuthState("super_admin");
-      return;
-    }
     // Check if person exists
     const {data:person}=await supabase.from("persons").select("*, houses(*)").eq("user_id",user.id).single();
     if(person){
@@ -83,7 +77,6 @@ export default function App() {
   if(authState==="pending") return <PendingScreen email={session?.user?.email} house={myHouse} onSignOut={signOut} onRefresh={refresh}/>;
   if(authState==="suspended") return <SuspendedScreen msg="Your account has been suspended by your house admin." onSignOut={signOut}/>;
   if(authState==="house_suspended") return <SuspendedScreen msg="Your house has been suspended by MyHouseExpenses. Please contact support." onSignOut={signOut}/>;
-  if(authState==="super_admin") return <SuperAdminApp user={session?.user} onSignOut={signOut}/>;
   return <HouseApp myPerson={myPerson} myHouse={myHouse} isAdmin={authState==="house_admin"} onSignOut={signOut} onProfileUpdate={(p)=>setMyPerson(p)}/>;
 }
 
@@ -669,282 +662,6 @@ function HouseAdminView({house,persons,bills,categories,reload,showToast}){
     </div>
   );
 }
-
-// ── SUPER ADMIN APP ───────────────────────────────────────────────
-function SuperAdminApp({user,onSignOut}){
-  const [houses,setHouses]=useState([]);
-  const [loading,setLoading]=useState(true);
-  const [toast,setToast]=useState(null);
-  const [tab,setTab]=useState("dashboard");
-  const [stats,setStats]=useState(null);
-  const [showSupport,setShowSupport]=useState(false);
-  const [supportMsg,setSupportMsg]=useState("");
-  const showToast=(msg)=>{setToast(msg);setTimeout(()=>setToast(null),3000);};
-
-  const loadHouses=async()=>{
-    setLoading(true);
-    const{data}=await supabase.from("houses").select("*, persons(count), bills(count)").order("created_at",{ascending:false});
-    setHouses(data||[]);setLoading(false);
-  };
-
-  const loadStats=async()=>{
-    const[{data:h},{data:p},{data:b},{data:s}]=await Promise.all([
-      supabase.from("houses").select("id,status,created_at"),
-      supabase.from("persons").select("id,is_approved,created_at"),
-      supabase.from("bills").select("id,amount,created_at"),
-      supabase.from("settlements").select("id,amount,method,created_at"),
-    ]);
-    setStats({
-      totalHouses:(h||[]).length,
-      activeHouses:(h||[]).filter(x=>x.status==="active").length,
-      suspendedHouses:(h||[]).filter(x=>x.status==="suspended").length,
-      totalMembers:(p||[]).length,
-      approvedMembers:(p||[]).filter(x=>x.is_approved).length,
-      pendingMembers:(p||[]).filter(x=>!x.is_approved).length,
-      totalBills:(b||[]).length,
-      totalSpent:(b||[]).reduce((s,x)=>s+Number(x.amount),0),
-      totalSettlements:(s||[]).length,
-      totalSettled:(s||[]).reduce((s,x)=>s+Number(x.amount),0),
-      cashSettlements:(s||[]).filter(x=>x.method==="cash").length,
-      revolutSettlements:(s||[]).filter(x=>x.method==="revolut").length,
-    });
-  };
-
-  useEffect(()=>{loadHouses();loadStats();},[]);
-
-  const toggleHouse=async(h)=>{
-    const newStatus=h.status==="active"?"suspended":"active";
-    if(!confirm(`${newStatus==="suspended"?"Suspend":"Restore"} "${h.name}"?`))return;
-    await supabase.from("houses").update({status:newStatus}).eq("id",h.id);
-    showToast(`House ${newStatus==="suspended"?"suspended":"restored"} ✓`);
-    loadHouses();
-  };
-
-  const deleteHouse=async(h)=>{
-    if(!confirm(`DELETE "${h.name}" permanently? All data will be lost.`))return;
-    await supabase.from("houses").delete().eq("id",h.id);
-    showToast("House deleted");loadHouses();
-  };
-
-  const appUrl="https://myhouseexpenses.vercel.app";
-  const [showInvite,setShowInvite]=useState(false);
-  const [copied,setCopied]=useState(false);
-  const inviteMsg=`Hey! I'd like you to manage your house expenses using MyHouseExpenses.\n\nSign up here: ${appUrl}\n\n1. Create an account\n2. Click "Create a House"\n3. Invite your housemates using the join code\n\nIt's free and easy to use!`;
-  const copyLink=async()=>{await navigator.clipboard.writeText(appUrl);setCopied(true);setTimeout(()=>setCopied(false),2000);};
-  const shareWhatsApp=()=>window.open(`https://wa.me/?text=${encodeURIComponent(inviteMsg)}`,"_blank");
-  const shareEmail=()=>window.open(`mailto:?subject=Manage your house expenses with MyHouseExpenses&body=${encodeURIComponent(inviteMsg)}`,"_blank");
-
-  const StatCard=({label,value,sub,color="#fff"})=>(
-    <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px",flex:1,minWidth:140}}>
-      <div style={{fontSize:11,color:"#94a3b8",fontWeight:600,marginBottom:6,letterSpacing:"0.08em"}}>{label}</div>
-      <div style={{fontSize:28,fontWeight:800,color}}>{value}</div>
-      {sub&&<div style={{fontSize:11,color:"#64748b",marginTop:4}}>{sub}</div>}
-    </div>
-  );
-
-  return(
-    <div style={{fontFamily:"'Inter',system-ui,sans-serif",minHeight:"100vh",background:"#0f172a",color:"white",padding:"0 0 40px",maxWidth:700,margin:"0 auto"}}>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-      <div style={{padding:"20px 20px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,0.1)"}}>
-        <div>
-          <div style={{fontWeight:800,fontSize:18}}>🏠 MyHouseExpenses</div>
-          <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Super Admin · {user?.email}</div>
-        </div>
-        <button onClick={onSignOut} style={{padding:"8px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"transparent",color:"white",fontSize:13,cursor:"pointer"}}>Sign out</button>
-      </div>
-
-      {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:999,padding:"10px 20px",borderRadius:20,fontSize:14,fontWeight:500,background:"white",color:"#0f172a",whiteSpace:"nowrap"}}>{toast}</div>}
-
-      {/* Tab nav */}
-      <div style={{display:"flex",gap:4,padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
-        {[["dashboard","📊 Dashboard"],["houses","🏠 Houses"],["support","💬 Support"]].map(([t,label])=>(
-          <button key={t} onClick={()=>setTab(t)} style={{padding:"8px 16px",borderRadius:99,border:"none",background:tab===t?"white":"transparent",color:tab===t?"#0f172a":"#94a3b8",fontWeight:600,fontSize:13,cursor:"pointer"}}>{label}</button>
-        ))}
-      </div>
-
-      <div style={{padding:"20px 16px"}}>
-
-      {/* DASHBOARD TAB */}
-      {tab==="dashboard"&&(
-        <div>
-          <h2 style={{margin:"0 0 16px",fontSize:18,fontWeight:700}}>System Overview</h2>
-
-          {stats?(
-            <>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:16}}>
-                <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px"}}>
-                  <div style={{fontSize:11,color:"#94a3b8",fontWeight:600,letterSpacing:"0.08em",marginBottom:6}}>ACTIVE HOUSES</div>
-                  <div style={{fontSize:32,fontWeight:800}}>{stats.activeHouses}</div>
-                  <div style={{fontSize:11,color:"#22c55e",marginTop:4}}>{stats.totalHouses} total registered</div>
-                </div>
-                <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px"}}>
-                  <div style={{fontSize:11,color:"#94a3b8",fontWeight:600,letterSpacing:"0.08em",marginBottom:6}}>TOTAL MEMBERS</div>
-                  <div style={{fontSize:32,fontWeight:800}}>{stats.totalMembers}</div>
-                  <div style={{fontSize:11,color:stats.pendingMembers>0?"#f97316":"#22c55e",marginTop:4}}>{stats.pendingMembers>0?stats.pendingMembers+" pending":"All approved ✓"}</div>
-                </div>
-                <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px"}}>
-                  <div style={{fontSize:11,color:"#94a3b8",fontWeight:600,letterSpacing:"0.08em",marginBottom:6}}>TOTAL BILLS</div>
-                  <div style={{fontSize:32,fontWeight:800}}>{stats.totalBills}</div>
-                  <div style={{fontSize:11,color:"#60a5fa",marginTop:4}}>€{stats.totalSpent.toFixed(2)} total value</div>
-                </div>
-                <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px"}}>
-                  <div style={{fontSize:11,color:"#94a3b8",fontWeight:600,letterSpacing:"0.08em",marginBottom:6}}>TOTAL SETTLED</div>
-                  <div style={{fontSize:32,fontWeight:800}}>€{stats.totalSettled.toFixed(2)}</div>
-                  <div style={{fontSize:11,color:"#22c55e",marginTop:4}}>{stats.totalSettlements} settlements</div>
-                </div>
-              </div>
-              <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px",marginBottom:12}}>
-                <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Settlement Methods</div>
-                <div style={{display:"flex",gap:16}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:11,color:"#94a3b8",marginBottom:4}}>💵 CASH</div>
-                    <div style={{fontSize:22,fontWeight:700}}>{stats.cashSettlements}</div>
-                    <div style={{height:4,borderRadius:2,background:"rgba(255,255,255,0.1)",marginTop:8}}><div style={{height:"100%",borderRadius:2,background:"#22c55e",width:stats.totalSettlements>0?(stats.cashSettlements/stats.totalSettlements*100)+"%":"0%"}}/></div>
-                  </div>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:11,color:"#94a3b8",marginBottom:4}}>💜 REVOLUT</div>
-                    <div style={{fontSize:22,fontWeight:700}}>{stats.revolutSettlements}</div>
-                    <div style={{height:4,borderRadius:2,background:"rgba(255,255,255,0.1)",marginTop:8}}><div style={{height:"100%",borderRadius:2,background:"#7c3aed",width:stats.totalSettlements>0?(stats.revolutSettlements/stats.totalSettlements*100)+"%":"0%"}}/></div>
-                  </div>
-                </div>
-              </div>
-              <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px",marginBottom:12}}>
-                <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>System Status</div>
-                {[["Database","Online"],["Hosting (Vercel)","Online"],["Auth","Online"],["Storage","Online"]].map(([n,s])=>(
-                  <div key={n} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                    <span style={{fontSize:13,color:"#94a3b8"}}>{n}</span>
-                    <span style={{fontSize:12,fontWeight:600,color:"#22c55e"}}>● {s}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                <button onClick={()=>{loadStats();loadHouses();showToast("Refreshed ✓");}} style={{padding:"12px 16px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"transparent",color:"white",fontWeight:600,fontSize:13,cursor:"pointer",textAlign:"left"}}>↺ Refresh Dashboard</button>
-                <button onClick={()=>setTab("houses")} style={{padding:"12px 16px",borderRadius:10,border:"none",background:"white",color:"#0f172a",fontWeight:600,fontSize:13,cursor:"pointer",textAlign:"left"}}>🏠 Manage Houses →</button>
-                <button onClick={()=>setTab("support")} style={{padding:"12px 16px",borderRadius:10,border:"none",background:"#7c3aed",color:"white",fontWeight:600,fontSize:13,cursor:"pointer",textAlign:"left"}}>💬 Support Centre →</button>
-              </div>
-            </>
-          ):(
-            <div style={{textAlign:"center",padding:"3rem",color:"#94a3b8"}}>Loading stats…</div>
-          )}
-        </div>
-      )}
-
-      {/* SUPPORT TAB */}
-      {tab==="support"&&(
-        <div>
-          <h2 style={{margin:"0 0 6px",fontSize:18,fontWeight:700}}>Support Centre</h2>
-          <p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>Help users and manage support requests</p>
-
-          <div style={{background:"rgba(255,255,255,0.07)",borderRadius:16,padding:"20px",marginBottom:16}}>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>📧 Send Message to All Users</div>
-            <div style={{fontSize:12,color:"#94a3b8",marginBottom:12}}>Broadcast an important message or update</div>
-            <textarea
-              value={supportMsg}
-              onChange={e=>setSupportMsg(e.target.value)}
-              placeholder="Type your message here..."
-              style={{width:"100%",padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"white",fontSize:13,resize:"vertical",minHeight:100,fontFamily:"inherit",boxSizing:"border-box"}}
-            />
-            <button onClick={()=>{if(supportMsg.trim()){showToast("Message sent ✓");setSupportMsg("");}}} style={{marginTop:10,padding:"11px 20px",borderRadius:10,border:"none",background:"white",color:"#0f172a",fontWeight:700,fontSize:13,cursor:"pointer"}}>Send Message</button>
-          </div>
-
-          <div style={{background:"rgba(255,255,255,0.07)",borderRadius:16,padding:"20px",marginBottom:16}}>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>📞 Contact Support</div>
-            <div style={{fontSize:12,color:"#94a3b8",marginBottom:12}}>Get help from the MyHouseExpenses team</div>
-            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-              <button onClick={()=>window.open("mailto:support@myhouseexpenses.app","_blank")} style={{padding:"11px 16px",borderRadius:10,border:"none",background:"#ea4335",color:"white",fontWeight:600,fontSize:13,cursor:"pointer"}}>📧 Email Support</button>
-              <button onClick={()=>window.open("https://wa.me/?text=Hi, I need help with MyHouseExpenses","_blank")} style={{padding:"11px 16px",borderRadius:10,border:"none",background:"#25d366",color:"white",fontWeight:600,fontSize:13,cursor:"pointer"}}>💬 WhatsApp</button>
-            </div>
-          </div>
-
-          <div style={{background:"rgba(255,255,255,0.07)",borderRadius:16,padding:"20px"}}>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>📋 System Info</div>
-            <div style={{display:"flex",flexDirection:"column",gap:8,fontSize:13,color:"#94a3b8"}}>
-              <div style={{display:"flex",justifyContent:"space-between"}}><span>App Version</span><span style={{color:"white",fontWeight:600}}>1.0.0</span></div>
-              <div style={{display:"flex",justifyContent:"space-between"}}><span>Database</span><span style={{color:"#22c55e",fontWeight:600}}>● Online</span></div>
-              <div style={{display:"flex",justifyContent:"space-between"}}><span>Hosting</span><span style={{color:"#22c55e",fontWeight:600}}>● Vercel</span></div>
-              <div style={{display:"flex",justifyContent:"space-between"}}><span>Admin Email</span><span style={{color:"white",fontWeight:600}}>{user?.email}</span></div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* HOUSES TAB */}
-      {tab==="houses"&&(
-        <div>
-        <button onClick={()=>setShowInvite(!showInvite)} style={{width:"100%",marginBottom:16,padding:"13px",borderRadius:14,border:"none",background:"white",color:"#0f172a",fontWeight:700,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          Invite a House Admin
-        </button>
-
-        {showInvite&&(
-          <div style={{background:"rgba(255,255,255,0.08)",borderRadius:16,padding:"16px",marginBottom:16,border:"1px solid rgba(255,255,255,0.15)"}}>
-            <div style={{fontSize:13,color:"#94a3b8",marginBottom:12}}>Share MyHouseExpenses with someone who wants to manage their house:</div>
-            <div style={{background:"rgba(255,255,255,0.05)",borderRadius:12,padding:"14px 16px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-              <div style={{minWidth:0}}>
-                <div style={{fontSize:11,color:"#94a3b8",fontWeight:600,marginBottom:4}}>APP LINK</div>
-                <div style={{fontSize:14,fontWeight:700,color:"white",fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{appUrl}</div>
-              </div>
-              <button onClick={copyLink} style={{padding:"8px 14px",borderRadius:10,border:"none",background:copied?"#22c55e":"white",color:copied?"white":"#0f172a",fontWeight:600,fontSize:13,cursor:"pointer",flexShrink:0}}>
-                {copied?"✓ Copied!":"Copy"}
-              </button>
-            </div>
-            <div style={{display:"flex",gap:10}}>
-              <button onClick={shareWhatsApp} style={{flex:1,padding:"13px",borderRadius:12,border:"none",background:"#25d366",color:"white",fontWeight:700,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                WhatsApp
-              </button>
-              <button onClick={shareEmail} style={{flex:1,padding:"13px",borderRadius:12,border:"none",background:"#ea4335",color:"white",fontWeight:700,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                Email
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <h2 style={{margin:0,fontSize:20,fontWeight:700}}>All Houses</h2>
-          <span style={{background:"rgba(255,255,255,0.1)",borderRadius:99,padding:"4px 12px",fontSize:13,fontWeight:600}}>{houses.length} total</span>
-        </div>
-
-        {loading?<div style={{textAlign:"center",padding:"3rem",color:"#94a3b8"}}>Loading…</div>
-        :houses.length===0?<div style={{textAlign:"center",padding:"3rem",color:"#94a3b8"}}>No houses yet.</div>
-        :(
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            {houses.map(h=>(
-              <div key={h.id} style={{background:"rgba(255,255,255,0.05)",borderRadius:16,padding:"16px",border:h.status==="suspended"?"1px solid #ef4444":"1px solid rgba(255,255,255,0.1)"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:700,fontSize:16,display:"flex",alignItems:"center",gap:8}}>
-                      {h.name}
-                      {h.status==="suspended"&&<span style={{fontSize:10,fontWeight:600,background:"#ef4444",color:"white",padding:"2px 8px",borderRadius:99}}>SUSPENDED</span>}
-                    </div>
-                    <div style={{fontSize:12,color:"#94a3b8",marginTop:2,fontFamily:"monospace",letterSpacing:"0.05em"}}>{h.join_code}</div>
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:16,marginBottom:14}}>
-                  <div style={{fontSize:12,color:"#94a3b8"}}><span style={{fontWeight:700,color:"white",fontSize:16}}>{h.persons?.[0]?.count||0}</span> members</div>
-                  <div style={{fontSize:12,color:"#94a3b8"}}><span style={{fontWeight:700,color:"white",fontSize:16}}>{h.bills?.[0]?.count||0}</span> bills</div>
-                  <div style={{fontSize:12,color:"#94a3b8"}}>Created {new Date(h.created_at).toLocaleDateString("en-IE",{day:"numeric",month:"short",year:"numeric"})}</div>
-                </div>
-                <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>toggleHouse(h)} style={{flex:1,padding:"10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"transparent",color:"white",fontWeight:600,fontSize:13,cursor:"pointer"}}>
-                    {h.status==="suspended"?"▶ Restore":"⏸ Suspend"}
-                  </button>
-                  <button onClick={()=>deleteHouse(h)} style={{padding:"10px 14px",borderRadius:10,border:"none",background:"#ef4444",color:"white",fontWeight:600,fontSize:13,cursor:"pointer"}}>🗑 Delete</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        </div>
-      )}
-
-      </div>
-    </div>
-  );
-}
-
-
 
 // ── PROFILE VIEW ─────────────────────────────────────────────────
 function ProfileView({myPerson,onSave,onSignOut,onClose}){
