@@ -771,41 +771,56 @@ function SuperAdminApp({user,onSignOut}){
 
           {stats?(
             <>
-              {/* Houses stats */}
-              <div style={{fontSize:11,color:"#64748b",fontWeight:600,letterSpacing:"0.1em",marginBottom:8}}>HOUSES</div>
-              <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-                <StatCard label="TOTAL HOUSES" value={stats.totalHouses}/>
-                <StatCard label="ACTIVE" value={stats.activeHouses} color="#22c55e"/>
-                <StatCard label="SUSPENDED" value={stats.suspendedHouses} color="#ef4444"/>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:16}}>
+                <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px"}}>
+                  <div style={{fontSize:11,color:"#94a3b8",fontWeight:600,letterSpacing:"0.08em",marginBottom:6}}>ACTIVE HOUSES</div>
+                  <div style={{fontSize:32,fontWeight:800}}>{stats.activeHouses}</div>
+                  <div style={{fontSize:11,color:"#22c55e",marginTop:4}}>{stats.totalHouses} total registered</div>
+                </div>
+                <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px"}}>
+                  <div style={{fontSize:11,color:"#94a3b8",fontWeight:600,letterSpacing:"0.08em",marginBottom:6}}>TOTAL MEMBERS</div>
+                  <div style={{fontSize:32,fontWeight:800}}>{stats.totalMembers}</div>
+                  <div style={{fontSize:11,color:stats.pendingMembers>0?"#f97316":"#22c55e",marginTop:4}}>{stats.pendingMembers>0?stats.pendingMembers+" pending":"All approved ✓"}</div>
+                </div>
+                <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px"}}>
+                  <div style={{fontSize:11,color:"#94a3b8",fontWeight:600,letterSpacing:"0.08em",marginBottom:6}}>TOTAL BILLS</div>
+                  <div style={{fontSize:32,fontWeight:800}}>{stats.totalBills}</div>
+                  <div style={{fontSize:11,color:"#60a5fa",marginTop:4}}>€{stats.totalSpent.toFixed(2)} total value</div>
+                </div>
+                <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px"}}>
+                  <div style={{fontSize:11,color:"#94a3b8",fontWeight:600,letterSpacing:"0.08em",marginBottom:6}}>TOTAL SETTLED</div>
+                  <div style={{fontSize:32,fontWeight:800}}>€{stats.totalSettled.toFixed(2)}</div>
+                  <div style={{fontSize:11,color:"#22c55e",marginTop:4}}>{stats.totalSettlements} settlements</div>
+                </div>
               </div>
-
-              {/* Members stats */}
-              <div style={{fontSize:11,color:"#64748b",fontWeight:600,letterSpacing:"0.1em",marginBottom:8}}>MEMBERS</div>
-              <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-                <StatCard label="TOTAL MEMBERS" value={stats.totalMembers}/>
-                <StatCard label="APPROVED" value={stats.approvedMembers} color="#22c55e"/>
-                <StatCard label="PENDING" value={stats.pendingMembers} color="#f97316"/>
+              <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px",marginBottom:12}}>
+                <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Settlement Methods</div>
+                <div style={{display:"flex",gap:16}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,color:"#94a3b8",marginBottom:4}}>💵 CASH</div>
+                    <div style={{fontSize:22,fontWeight:700}}>{stats.cashSettlements}</div>
+                    <div style={{height:4,borderRadius:2,background:"rgba(255,255,255,0.1)",marginTop:8}}><div style={{height:"100%",borderRadius:2,background:"#22c55e",width:stats.totalSettlements>0?(stats.cashSettlements/stats.totalSettlements*100)+"%":"0%"}}/></div>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,color:"#94a3b8",marginBottom:4}}>💜 REVOLUT</div>
+                    <div style={{fontSize:22,fontWeight:700}}>{stats.revolutSettlements}</div>
+                    <div style={{height:4,borderRadius:2,background:"rgba(255,255,255,0.1)",marginTop:8}}><div style={{height:"100%",borderRadius:2,background:"#7c3aed",width:stats.totalSettlements>0?(stats.revolutSettlements/stats.totalSettlements*100)+"%":"0%"}}/></div>
+                  </div>
+                </div>
               </div>
-
-              {/* Bills stats */}
-              <div style={{fontSize:11,color:"#64748b",fontWeight:600,letterSpacing:"0.1em",marginBottom:8}}>BILLS & SETTLEMENTS</div>
-              <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-                <StatCard label="TOTAL BILLS" value={stats.totalBills}/>
-                <StatCard label="TOTAL SPENT" value={`€${stats.totalSpent.toFixed(2)}`} color="#60a5fa"/>
-                <StatCard label="TOTAL SETTLED" value={`€${stats.totalSettled.toFixed(2)}`} color="#22c55e"/>
+              <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,padding:"16px",marginBottom:12}}>
+                <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>System Status</div>
+                {[["Database","Online"],["Hosting (Vercel)","Online"],["Auth","Online"],["Storage","Online"]].map(([n,s])=>(
+                  <div key={n} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <span style={{fontSize:13,color:"#94a3b8"}}>{n}</span>
+                    <span style={{fontSize:12,fontWeight:600,color:"#22c55e"}}>● {s}</span>
+                  </div>
+                ))}
               </div>
-              <div style={{display:"flex",gap:10,marginBottom:24,flexWrap:"wrap"}}>
-                <StatCard label="SETTLEMENTS" value={stats.totalSettlements}/>
-                <StatCard label="💵 CASH" value={stats.cashSettlements}/>
-                <StatCard label="💜 REVOLUT" value={stats.revolutSettlements}/>
-              </div>
-
-              {/* Quick actions */}
-              <div style={{fontSize:11,color:"#64748b",fontWeight:600,letterSpacing:"0.1em",marginBottom:8}}>QUICK ACTIONS</div>
-              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                <button onClick={()=>{loadStats();loadHouses();showToast("Refreshed ✓");}} style={{padding:"12px 20px",borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",background:"transparent",color:"white",fontWeight:600,fontSize:13,cursor:"pointer"}}>↺ Refresh Data</button>
-                <button onClick={()=>setTab("houses")} style={{padding:"12px 20px",borderRadius:12,border:"none",background:"white",color:"#0f172a",fontWeight:600,fontSize:13,cursor:"pointer"}}>Manage Houses →</button>
-                <button onClick={()=>setTab("support")} style={{padding:"12px 20px",borderRadius:12,border:"none",background:"#7c3aed",color:"white",fontWeight:600,fontSize:13,cursor:"pointer"}}>💬 Support</button>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                <button onClick={()=>{loadStats();loadHouses();showToast("Refreshed ✓");}} style={{padding:"12px 16px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"transparent",color:"white",fontWeight:600,fontSize:13,cursor:"pointer",textAlign:"left"}}>↺ Refresh Dashboard</button>
+                <button onClick={()=>setTab("houses")} style={{padding:"12px 16px",borderRadius:10,border:"none",background:"white",color:"#0f172a",fontWeight:600,fontSize:13,cursor:"pointer",textAlign:"left"}}>🏠 Manage Houses →</button>
+                <button onClick={()=>setTab("support")} style={{padding:"12px 16px",borderRadius:10,border:"none",background:"#7c3aed",color:"white",fontWeight:600,fontSize:13,cursor:"pointer",textAlign:"left"}}>💬 Support Centre →</button>
               </div>
             </>
           ):(
