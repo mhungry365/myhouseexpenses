@@ -1491,3 +1491,4 @@ function EditBillForm({bill,persons,categories,onSave,onCancel}){
     </div>
   );
 }
+ 
