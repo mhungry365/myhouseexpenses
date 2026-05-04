@@ -255,12 +255,12 @@ function OnboardScreen({user,onDone}){
           <button onClick={()=>setScreen("create")} style={{background:"white",borderRadius:16,padding:"20px",border:"none",cursor:"pointer",textAlign:"left"}}>
             <div style={{fontSize:24,marginBottom:8}}>🏡</div>
             <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>Create a House</div>
-            <div style={{fontSize:13,color:"#64748b"}}>Set up a new house and invite your housemates</div>
+            <div style={{fontSize:13,color:t.textSub}}>Set up a new house and invite your housemates</div>
           </button>
           <button onClick={()=>setScreen("join")} style={{background:"white",borderRadius:16,padding:"20px",border:"none",cursor:"pointer",textAlign:"left"}}>
             <div style={{fontSize:24,marginBottom:8}}>🔑</div>
             <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>Join a House</div>
-            <div style={{fontSize:13,color:"#64748b"}}>Enter a join code from your house admin</div>
+            <div style={{fontSize:13,color:t.textSub}}>Enter a join code from your house admin</div>
           </button>
         </div>
         <button onClick={()=>supabase.auth.signOut()} style={{width:"100%",marginTop:16,padding:"10px",border:"none",background:"transparent",fontSize:13,color:"#64748b",cursor:"pointer"}}>Sign out</button>
@@ -413,8 +413,8 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
       {/* Header */}
       <div style={{background:"#f4f4f0",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",maxWidth:900,margin:"0 auto"}}>
         <div>
-          <div style={{fontWeight:800,fontSize:18,letterSpacing:"-0.3px"}}>🏠 {myHouse.name}</div>
-          <div style={{fontSize:11,color:"#94a3b8",fontWeight:500,marginTop:1}}>Code: {myHouse.join_code}</div>
+          <div style={{fontWeight:800,fontSize:18,letterSpacing:"-0.3px",color:t.text}}>🏠 {myHouse.name}</div>
+          <div style={{fontSize:11,color:t.textSub,fontWeight:500,marginTop:1}}>Code: {myHouse.join_code}</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
 <button onClick={toggle} title="Toggle theme" style={{width:36,height:36,borderRadius:99,border:"1.5px solid #e2e8f0",background:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{t.dark?"☀️":"🌙"}</button>
@@ -1219,7 +1219,7 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
       </div>
       <div style={{padding:"0 16px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <span style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:"#94a3b8"}}>RECENT TRANSACTIONS</span>
+          <span style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:t.textSub}}>RECENT TRANSACTIONS</span>
           <span style={{fontSize:12,fontWeight:600,background:"#e2e8f0",color:"#475569",padding:"4px 10px",borderRadius:99}}>{filtered.length} bills</span>
         </div>
         {filtered.length===0?<div style={{textAlign:"center",padding:"3rem",color:"#94a3b8",fontSize:14}}>No bills yet. Tap + to add one!</div>:(
@@ -1244,8 +1244,8 @@ function TransactionCard({bill,persons,allBills}){
           <span style={{fontSize:11,fontWeight:800,color:cs.color,letterSpacing:"0.05em"}}>{catAbbr(c?.name)}</span>
         </div>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontWeight:700,fontSize:15,marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{bill.merchant}</div>
-          <div style={{fontSize:13,color:"#64748b"}}>{p?`${p.name} paid`:"Unknown"} · {new Date(bill.bill_date+"T00:00:00").toLocaleDateString("en-IE",{month:"short",day:"numeric"})}</div>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:t.text}}>{bill.merchant}</div>
+          <div style={{fontSize:13,color:t.textSub}}>{p?`${p.name} paid`:"Unknown"} · {new Date(bill.bill_date+"T00:00:00").toLocaleDateString("en-IE",{month:"short",day:"numeric"})}</div>
           {p&&personTotal>0&&<div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>{p.name}'s total spend: <span style={{fontWeight:600,color:"#475569"}}>{fmt(personTotal)}</span></div>}
         </div>
         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
@@ -1359,7 +1359,7 @@ function PeopleView({persons,bills}){
                 <div style={{width:46,height:46,borderRadius:"50%",background:p.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,color:"white",flexShrink:0}}>{initials(p.name)}</div>
                 <div style={{flex:1}}>
                   <div style={{fontWeight:700,fontSize:16}}>{p.name}{p.is_house_admin?" 👑":""}{p.suspended?" 🔒":""}</div>
-                  <div style={{fontSize:13,color:"#64748b"}}>Paid {fmt(pTotal)}</div>
+                  <div style={{fontSize:13,color:t.textSub}}>Paid {fmt(pTotal)}</div>
                 </div>
                 <div style={{textAlign:"right"}}>
                   <div style={{fontWeight:700,fontSize:15,color:diff>=0?"#16a34a":"#e11d48"}}>{diff>=0?"+":""}{fmt(diff)}</div>
