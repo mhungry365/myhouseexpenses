@@ -347,14 +347,6 @@ function SuspendedScreen({msg,onSignOut}){
 }
 
 // ── HOUSE APP ─────────────────────────────────────────────────────
-
-function useTheme(){
-  const[dark,setDark]=useState(()=>localStorage.getItem("houseTheme")==="dark");
-  const toggle=()=>{const n=!dark;setDark(n);localStorage.setItem("houseTheme",n?"dark":"light");};
-  const t={dark,bg:dark?"#1a1a2e":"#f4f4f0",surface:dark?"#16213e":"#ffffff",surfaceBorder:dark?"rgba(255,255,255,0.08)":"#e2e8f0",text:dark?"#f8fafc":"#0f172a",textSub:dark?"#94a3b8":"#64748b",headerBg:dark?"#1a1a2e":"#f4f4f0",navBg:dark?"#1a1a2e":"#ffffff",navBorder:dark?"rgba(255,255,255,0.1)":"#f1f5f9",chipActive:dark?"#ffffff":"#0f172a",chipActiveText:dark?"#0f172a":"#ffffff",chipInactive:dark?"#16213e":"#ffffff",chipInactiveText:dark?"#94a3b8":"#475569",card:dark?"#16213e":"#ffffff",cardBorder:dark?"rgba(255,255,255,0.08)":"#e2e8f0"};
-  return{t,toggle};
-}
-
 function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
   const [view,setView]=useState("Bills");
   const [persons,setPersons]=useState([]);
@@ -364,7 +356,6 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
   const [showForm,setShowForm]=useState(false);
   const [showProfile,setShowProfile]=useState(false);
   const [toast,setToast]=useState(null);
-  const {t,toggle}=useTheme();
   const showToast=(msg)=>{setToast(msg);setTimeout(()=>setToast(null),3000);};
 
   const [settlements,setSettlements]=useState([]);
@@ -407,7 +398,7 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
     ];
 
   return(
-    <div style={{fontFamily:"'Inter',system-ui,sans-serif",minHeight:"100vh",background:t.bg,color:t.text,position:"relative",paddingBottom:80,transition:"background 0.2s"}}>
+    <div style={{fontFamily:"'Inter',system-ui,sans-serif",minHeight:"100vh",background:"#f4f4f0",color:"#0f172a",position:"relative",paddingBottom:80}}>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 
       {/* Header */}
@@ -417,7 +408,6 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
           <div style={{fontSize:11,color:"#94a3b8",fontWeight:500,marginTop:1}}>Code: {myHouse.join_code}</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-<button onClick={toggle} title="Toggle theme" style={{width:36,height:36,borderRadius:99,border:"1.5px solid #e2e8f0",background:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{t.dark?"☀️":"🌙"}</button>
           <button onClick={loadAll} title="Refresh" style={{width:36,height:36,borderRadius:99,border:"1.5px solid #e2e8f0",background:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#475569"}}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
           </button>
@@ -865,7 +855,7 @@ function SuperAdminApp({user,onSignOut}){
 
       {/* HOUSES TAB */}
       {tab==="houses"&&(
-        <div>
+
         <button onClick={()=>setShowInvite(!showInvite)} style={{width:"100%",marginBottom:16,padding:"13px",borderRadius:14,border:"none",background:"white",color:"#0f172a",fontWeight:700,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           Invite a House Admin
