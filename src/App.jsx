@@ -411,9 +411,9 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 
       {/* Header */}
-      <div style={{background:t.headerBg,padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",maxWidth:900,margin:"0 auto"}}>
+      <div style={{background:"#f4f4f0",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",maxWidth:900,margin:"0 auto"}}>
         <div>
-          <div style={{fontWeight:800,fontSize:18,letterSpacing:"-0.3px",color:t.text}}>🏠 {myHouse.name}</div>
+          <div style={{fontWeight:800,fontSize:18,letterSpacing:"-0.3px"}}>🏠 {myHouse.name}</div>
           <div style={{fontSize:11,color:"#94a3b8",fontWeight:500,marginTop:1}}>Code: {myHouse.join_code}</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -444,7 +444,7 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
         </button>
       )}
 
-      <div style={{position:"fixed",bottom:0,left:0,right:0,background:t.navBg,borderTop:"1px solid",borderColor:t.navBorder,display:"flex",justifyContent:"center",zIndex:100}}>
+      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"white",borderTop:"1px solid #f1f5f9",display:"flex",justifyContent:"center",zIndex:100}}>
         {tabs.map(tab=>(
           <button key={tab.id} onClick={()=>setView(tab.id)} style={{flex:1,padding:"12px 0 16px",border:"none",background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,color:view===tab.id?"#0f172a":"#94a3b8"}}>
             {tab.icon}
@@ -1209,12 +1209,12 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
       </div>
       <div style={{overflowX:"auto",padding:"0 16px 12px",display:"flex",gap:8,scrollbarWidth:"none"}}>
         {[{id:"",name:"All people"},...persons.filter(p=>p.is_approved)].map(p=>(
-          <button key={p.id} onClick={()=>setFilterPerson(p.id)} style={{flexShrink:0,padding:"10px 18px",borderRadius:99,border:"none",background:filterPerson===p.id?t.chipActive:t.chipInactive,color:filterPerson===p.id?t.chipActiveText:t.chipInactiveText,fontWeight:600,fontSize:14,cursor:"pointer",whiteSpace:"nowrap"}}>{p.name}</button>
+          <button key={p.id} onClick={()=>setFilterPerson(p.id)} style={{flexShrink:0,padding:"10px 18px",borderRadius:99,border:"none",background:filterPerson===p.id?"#0f172a":"white",color:filterPerson===p.id?"white":"#475569",fontWeight:600,fontSize:14,cursor:"pointer",whiteSpace:"nowrap"}}>{p.name}</button>
         ))}
       </div>
       <div style={{overflowX:"auto",padding:"0 16px 20px",display:"flex",gap:8,scrollbarWidth:"none"}}>
         {[{id:"",name:"All categories"},...categories].map(c=>(
-          <button key={c.id} onClick={()=>setFilterCat(c.id)} style={{flexShrink:0,padding:"10px 18px",borderRadius:99,border:"none",background:filterCat===c.id?t.chipActive:t.chipInactive,color:filterCat===c.id?t.chipActiveText:t.chipInactiveText,fontWeight:600,fontSize:14,cursor:"pointer",whiteSpace:"nowrap"}}>{c.name}</button>
+          <button key={c.id} onClick={()=>setFilterCat(c.id)} style={{flexShrink:0,padding:"10px 18px",borderRadius:99,border:"none",background:filterCat===c.id?"#0f172a":"white",color:filterCat===c.id?"white":"#475569",fontWeight:600,fontSize:14,cursor:"pointer",whiteSpace:"nowrap"}}>{c.name}</button>
         ))}
       </div>
       <div style={{padding:"0 16px"}}>
@@ -1239,7 +1239,7 @@ function TransactionCard({bill,persons,allBills}){
   const personTotal=allBills?allBills.filter(b=>b.persons?.id===p?.id).reduce((s,b)=>s+Number(b.amount),0):0;
   return(
     <>
-      <div style={{background:t.card,borderRadius:16,padding:"16px",display:"flex",alignItems:"center",gap:14,border:"1px solid",borderColor:t.cardBorder}}>
+      <div style={{background:"white",borderRadius:16,padding:"16px",display:"flex",alignItems:"center",gap:14}}>
         <div style={{width:52,height:52,borderRadius:14,background:cs.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
           <span style={{fontSize:11,fontWeight:800,color:cs.color,letterSpacing:"0.05em"}}>{catAbbr(c?.name)}</span>
         </div>
