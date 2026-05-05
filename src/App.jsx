@@ -1270,8 +1270,31 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
           <span style={{fontSize:12,fontWeight:600,background:"#e2e8f0",color:"#475569",padding:"4px 10px",borderRadius:99}}>{filtered.length} bills</span>
         </div>
         {filtered.length===0?<div style={{textAlign:"center",padding:"3rem",color:"#94a3b8",fontSize:14}}>No bills yet. Tap + to add one!</div>:(
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {filtered.map(b=><TransactionCard key={b.id} bill={b} persons={persons} allBills={bills}/>)}
+          <div style={{display:"flex",flexDirection:"column",gap:0}}>
+            {(()=>{
+              const groups={};
+              filtered.forEach(b=>{
+                const m=b.bill_date.slice(0,7);
+                if(!groups[m])groups[m]=[];
+                groups[m].push(b);
+              });
+              return Object.keys(groups).sort().reverse().map(month=>{
+                const [y,mo]=month.split('-').map(Number);
+                const label=new Date(y,mo-1).toLocaleString('default',{month:'long',year:'numeric'});
+                const mTotal=groups[month].reduce((s,b)=>s+Number(b.amount),0);
+                return(
+                  <div key={month} style={{marginBottom:20}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',marginBottom:10,borderBottom:'1.5px solid #e2e8f0'}}>
+                      <span style={{fontSize:12,fontWeight:700,color:'#0f172a',letterSpacing:'0.03em'}}>{label}</span>
+                      <span style={{fontSize:12,fontWeight:600,color:'#64748b'}}>{groups[month].length} bills · {fmt(mTotal)}</span>
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                      {groups[month].map(b=><TransactionCard key={b.id} bill={b} persons={persons} allBills={bills}/>)}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         )}
       </div>
