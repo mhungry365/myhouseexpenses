@@ -1021,7 +1021,7 @@ function ProfileView({myPerson,onSave,onSignOut,onClose}){
 }
 
 // ── SETTLE UP BUTTON ─────────────────────────────────────────────
-function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}){
+function SettleUpButton({persons,iOwe,theyOwe,myPerson,bills,myHouse,settlements,reload}){
   const [showSheet,setShowSheet]=useState(false);
   const [paying,setPaying]=useState(null);
   const [marking,setMarking]=useState(false);
@@ -1033,7 +1033,7 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
   // Calculate what others owe me (so I can show correct message when iOwe=0)
   const myTotalPaid=bills.filter(b=>b.persons?.id===myPerson?.id||b.person_id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
   const myShare=approved.length>0?grandTotal/approved.length:0;
-  const iAmOwed=iOwe>0?0:Math.max(0,Math.round((myTotalPaid-myShare)*100)/100);
+  const iAmOwed=theyOwe||0;
 
   const creditors=approved.filter(p=>p.id!==myPerson?.id).map(p=>{
     const pTotal=bills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0);
@@ -1247,7 +1247,7 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
           </div>
         </div>
         <div style={{display:"flex",gap:10}}>
-          <SettleUpButton persons={persons} iOwe={iOwe} myPerson={myPerson} bills={bills} myHouse={myHouse} settlements={settlements||[]} reload={reload}/>
+          <SettleUpButton persons={persons} iOwe={iOwe} theyOwe={theyOwe} myPerson={myPerson} bills={bills} myHouse={myHouse} settlements={settlements||[]} reload={reload}/>
           <button style={{flex:1,padding:"13px",borderRadius:12,background:"#1e293b",border:"none",color:"white",fontWeight:700,fontSize:15,cursor:"pointer"}}>Remind All</button>
         </div>
       </div>
