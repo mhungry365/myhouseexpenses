@@ -1033,12 +1033,12 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
   // Calculate what others owe me (so I can show correct message when iOwe=0)
   const myTotalPaid=bills.filter(b=>b.persons?.id===myPerson?.id||b.person_id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
   const myShare=approved.length>0?grandTotal/approved.length:0;
-  const iAmOwed=Math.max(0,Math.round((myTotalPaid-myShare-((settlements||[]).filter(s=>(s.to_person?.id||s.to_person_id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0)))*100)/100);
+  const iAmOwed=iOwe>0?0:Math.max(0,Math.round((myTotalPaid-myShare)*100)/100);
 
   const creditors=approved.filter(p=>p.id!==myPerson?.id).map(p=>{
     const pTotal=bills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0);
     const alreadyPaid=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id&&(s.to_person?.id||s.to_person_id)===p.id).reduce((s,x)=>s+Number(x.amount),0);
-    return {...p,paidExtra:Math.max(0,(pTotal-share)-alreadyPaid)};
+    return {...p,paidExtra:iOwe};
   }).filter(p=>p.paidExtra>0).sort((a,b)=>b.paidExtra-a.paidExtra);
 
   const mySettlements=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id||(s.to_person?.id||s.to_person_id)===myPerson?.id).slice(0,5);
