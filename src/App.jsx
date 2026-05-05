@@ -1217,10 +1217,9 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
   // Subtract settlements from balance
   const iReceived=(settlements||[]).filter(s=>(s.to_person?.id||s.to_person_id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
   const iPaid=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
-  const rawOwe=Math.max(0,share-myTotal);
-  const rawOwed=Math.max(0,myTotal-share);
-  const iOwe=Math.max(0,rawOwe-iPaid);
-  const theyOwe=Math.max(0,rawOwed-iReceived);
+  const netBalance=Math.round((myTotal-share-iPaid+iReceived)*100)/100;
+  const iOwe=Math.max(0,-netBalance);
+  const theyOwe=Math.max(0,netBalance);
   return(
     <div>
       <div style={{margin:"0 0 20px",borderRadius:20,background:"#0f172a",padding:"24px 28px",color:"white"}}>
