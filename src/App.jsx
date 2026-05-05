@@ -1032,11 +1032,11 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
 
   const creditors=approved.filter(p=>p.id!==myPerson?.id).map(p=>{
     const pTotal=bills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0);
-    const alreadyPaid=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id&&(s.to_person?.id||s.to_person_id)===p.id).reduce((s,x)=>s+Number(x.amount),0);
+    const alreadyPaid=(settlements||[]).filter(s=>s.from_person?.id===myPerson?.id&&s.to_person?.id===p.id).reduce((s,x)=>s+Number(x.amount),0);
     return {...p,paidExtra:Math.max(0,(pTotal-share)-alreadyPaid)};
   }).filter(p=>p.paidExtra>0).sort((a,b)=>b.paidExtra-a.paidExtra);
 
-  const mySettlements=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id||(s.to_person?.id||s.to_person_id)===myPerson?.id).slice(0,5);
+  const mySettlements=(settlements||[]).filter(s=>s.from_person?.id===myPerson?.id||s.to_person?.id===myPerson?.id).slice(0,5);
   const [settleMode,setSettleMode]=useState("all");
   const [partialAmount,setPartialAmount]=useState("");
   const [selectedMonth,setSelectedMonth]=useState("");
@@ -1114,10 +1114,10 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
 
             {/* Who you owe */}
             {iOwe<=0?(
-              <div style={{textAlign:"center",padding:"2rem",background:theyOwe>0?"#f0f9ff":"#f0fdf4",borderRadius:14,marginBottom:16}}>
-                <div style={{fontSize:32,marginBottom:8}}>{theyOwe>0?"💰":"🎉"}</div>
-                <div style={{fontWeight:700,fontSize:16,color:theyOwe>0?"#0284c7":"#16a34a"}}>{theyOwe>0?"You will receive money!":"You're all settled up!"}</div>
-                <div style={{fontSize:13,color:"#64748b",marginTop:4}}>{theyOwe>0?`You are owed ${fmt(theyOwe)}. Ask your housemates to settle up.`:"You don't owe anyone anything."}</div>
+              <div style={{textAlign:"center",padding:"2rem",background:"#f0fdf4",borderRadius:14,marginBottom:16}}>
+                <div style={{fontSize:32,marginBottom:8}}>🎉</div>
+                <div style={{fontWeight:700,fontSize:16,color:"#16a34a"}}>You're all settled up!</div>
+                <div style={{fontSize:13,color:"#64748b",marginTop:4}}>You don't owe anyone anything.</div>
               </div>
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
@@ -1209,9 +1209,9 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
   const grandTotal=bills.reduce((s,b)=>s+Number(b.amount),0);
   const myTotal=bills.filter(b=>b.persons?.id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
   const share=approved.length>0?grandTotal/approved.length:0;
-  // Subtract settlements from balance (handle both nested and flat person_id fields)
-  const iReceived=(settlements||[]).filter(s=>(s.to_person?.id||s.to_person_id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
-  const iPaid=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
+  // Subtract settlements from balance
+  const iReceived=(settlements||[]).filter(s=>s.to_person?.id===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
+  const iPaid=(settlements||[]).filter(s=>s.from_person?.id===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
   const rawOwe=Math.max(0,share-myTotal);
   const rawOwed=Math.max(0,myTotal-share);
   const iOwe=Math.max(0,rawOwe-iPaid);
@@ -1477,13 +1477,13 @@ function ReportView({bills,persons,categories,settlements=[],myPerson}){
           </>}
           {(()=>{
             if(approved.length<2)return null;
-            const totalAll=monthBills.reduce((s,b)=>s+Number(b.amount),0);
+            const totalAll=bills.reduce((s,b)=>s+Number(b.amount),0);
             if(totalAll===0)return null;
             const shareAll=Math.round((totalAll/approved.length)*100)/100;
-            const iPaidTotal=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
-            const iReceivedTotal=(settlements||[]).filter(s=>(s.to_person?.id||s.to_person_id)===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
+            const iPaidTotal=(settlements||[]).filter(s=>s.from_person_id===myPerson?.id||s.from_person?.id===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
+            const iReceivedTotal=(settlements||[]).filter(s=>s.to_person_id===myPerson?.id||s.to_person?.id===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
             const pw=approved.map(p=>{
-              const paid=monthBills.filter(b=>b.persons?.id===p.id||b.person_id===p.id).reduce((s,b)=>s+Number(b.amount),0);
+              const paid=bills.filter(b=>b.persons?.id===p.id||b.person_id===p.id).reduce((s,b)=>s+Number(b.amount),0);
               const rawDiff=Math.round((paid-shareAll)*100)/100;
               const isMe=p.id===myPerson?.id;
               const netDiff=isMe?rawDiff+iPaidTotal-iReceivedTotal:rawDiff;
