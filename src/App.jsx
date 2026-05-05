@@ -1027,28 +1027,18 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
   const [marking,setMarking]=useState(false);
 
   const approved=persons.filter(p=>p.is_approved);
-  // Month-by-month net balance (same logic as BillsView)
-  const sbMonths=[...new Set(bills.map(b=>b.bill_date.slice(0,7)))].sort();
-  let sbNet=0;
-  sbMonths.forEach(function(month){
-    const mBills=bills.filter(b=>b.bill_date.startsWith(month));
-    const mTotal=mBills.reduce((s,b)=>s+Number(b.amount),0);
-    if(mTotal===0||approved.length===0)return;
-    const mShare=Math.round((mTotal/approved.length)*100)/100;
-    const myMPaid=mBills.filter(b=>(b.persons?b.persons.id:b.person_id)===myPerson.id).reduce((s,b)=>s+Number(b.amount),0);
-    const mRaw=Math.round((myMPaid-mShare)*100)/100;
-    const mOut=(settlements||[]).filter(s=>s.settlement_month===month&&(s.from_person_id===myPerson.id||(s.from_person&&s.from_person.id===myPerson.id))).reduce((s,x)=>s+Number(x.amount),0);
-    const mIn=(settlements||[]).filter(s=>s.settlement_month===month&&(s.to_person_id===myPerson.id||(s.to_person&&s.to_person.id===myPerson.id))).reduce((s,x)=>s+Number(x.amount),0);
-    sbNet+=mRaw+mOut-mIn;
-  });
-  sbNet=Math.round(sbNet*100)/100;
   const grandTotal=bills.reduce((s,b)=>s+Number(b.amount),0);
   const share=approved.length>0?grandTotal/approved.length:0;
+
+  // Calculate what others owe me (so I can show correct message when iOwe=0)
+  const myTotalPaid=bills.filter(b=>b.persons?.id===myPerson?.id||b.person_id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
+  const myShare=approved.length>0?grandTotal/approved.length:0;
+  const iAmOwed=Math.max(0,Math.round((myTotalPaid-myShare-((settlements||[]).filter(s=>(s.to_person?.id||s.to_person_id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0)))*100)/100);
 
   const creditors=approved.filter(p=>p.id!==myPerson?.id).map(p=>{
     const pTotal=bills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0);
     const alreadyPaid=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id&&(s.to_person?.id||s.to_person_id)===p.id).reduce((s,x)=>s+Number(x.amount),0);
-    return {...p,paidExtra:Math.max(0,Math.abs(Math.min(0,sbNet)))};
+    return {...p,paidExtra:Math.max(0,(pTotal-share)-alreadyPaid)};
   }).filter(p=>p.paidExtra>0).sort((a,b)=>b.paidExtra-a.paidExtra);
 
   const mySettlements=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id||(s.to_person?.id||s.to_person_id)===myPerson?.id).slice(0,5);
