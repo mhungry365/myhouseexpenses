@@ -1412,17 +1412,33 @@ function BillForm({myPerson,myHouse,categories,onSave,onCancel}){
   );
 }
 
-function PeopleView({persons,bills}){
+function PeopleView({persons,bills,settlements=[]}){
   const approved=persons.filter(p=>p.is_approved);
-  const grandTotal=bills.reduce((s,b)=>s+Number(b.amount),0);
+  // Month-by-month net balance per person
+  const allMonths=[...new Set(bills.map(b=>b.bill_date.slice(0,7)))].sort();
+  const personNetBalance=(p)=>{
+    let net=0;
+    allMonths.forEach(function(month){
+      const mBills=bills.filter(b=>b.bill_date.startsWith(month));
+      const mTotal=mBills.reduce((s,b)=>s+Number(b.amount),0);
+      if(mTotal===0||approved.length===0)return;
+      const mShare=Math.round((mTotal/approved.length)*100)/100;
+      const mPaid=mBills.filter(b=>(b.persons?b.persons.id:b.person_id)===p.id).reduce((s,b)=>s+Number(b.amount),0);
+      const mOut=(settlements||[]).filter(s=>s.settlement_month===month&&(s.from_person_id===p.id||(s.from_person&&s.from_person.id===p.id))).reduce((s,x)=>s+Number(x.amount),0);
+      const mIn=(settlements||[]).filter(s=>s.settlement_month===month&&(s.to_person_id===p.id||(s.to_person&&s.to_person.id===p.id))).reduce((s,x)=>s+Number(x.amount),0);
+      net+=Math.round((mPaid-mShare+mOut-mIn)*100)/100;
+    });
+    const untagOut=(settlements||[]).filter(s=>!s.settlement_month&&(s.from_person_id===p.id||(s.from_person&&s.from_person.id===p.id))).reduce((s,x)=>s+Number(x.amount),0);
+    const untagIn=(settlements||[]).filter(s=>!s.settlement_month&&(s.to_person_id===p.id||(s.to_person&&s.to_person.id===p.id))).reduce((s,x)=>s+Number(x.amount),0);
+    return Math.round((net+untagOut-untagIn)*100)/100;
+  };
   return(
     <div style={{padding:"0 16px"}}>
       <h2 style={{fontSize:22,fontWeight:700,margin:"0 0 20px"}}>Housemates</h2>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {approved.map(p=>{
           const pTotal=bills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0);
-          const share=approved.length>0?grandTotal/approved.length:0;
-          const diff=pTotal-share;
+          const diff=personNetBalance(p);
           return(
             <div key={p.id} style={{background:"white",borderRadius:16,padding:"16px",opacity:p.suspended?0.5:1}}>
               <div style={{display:"flex",alignItems:"center",gap:12}}>
