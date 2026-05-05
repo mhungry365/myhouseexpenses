@@ -1393,6 +1393,30 @@ function ReportView({bills,persons,categories}){
               {approved.length>0&&<div><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>PER PERSON</div><div style={{fontWeight:700}}>{fmt(grandTotal/approved.length)}</div></div>}
             </div>
           </div>
+          {(()=>{
+            const totalAll=bills.reduce((s,b)=>s+Number(b.amount),0);
+            const shareAll=Math.round((totalAll/approved.length)*100)/100;
+            const pwAll=approved.map(p=>({...p,paid:bills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0)})).map(p=>({...p,diff:Math.round((p.paid-shareAll)*100)/100}));
+            const credAll=pwAll.filter(p=>p.diff>0);
+            const debAll=pwAll.filter(p=>p.diff<0);
+            if(!credAll.length||!debAll.length)return null;
+            return(
+              <div style={{background:"#f0fdf4",borderRadius:14,padding:"14px 16px",marginBottom:16,border:"1.5px solid #bbf7d0"}}>
+                <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"#16a34a",marginBottom:8}}>OVERALL BALANCE TO SETTLE</div>
+                {debAll.map(d=>credAll.map(c=>(
+                  <div key={d.id+c.id}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                      <div style={{width:28,height:28,borderRadius:"50%",background:d.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"white"}}>{initials(d.name)}</div>
+                      <span style={{fontSize:13,color:"#64748b"}}>pays</span>
+                      <div style={{width:28,height:28,borderRadius:"50%",background:c.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"white"}}>{initials(c.name)}</div>
+                      <span style={{fontWeight:800,fontSize:20,color:"#16a34a",flex:1,textAlign:"right"}}>{fmt(Math.abs(d.diff))}</span>
+                    </div>
+                    <div style={{fontSize:12,color:"#64748b"}}>Total spend {fmt(totalAll)} ÷ {approved.length} = {fmt(shareAll)} each · {d.name} paid {fmt(d.paid)} · {c.name} paid {fmt(c.paid)}</div>
+                  </div>
+                )))}
+              </div>
+            );
+          })()}
           <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:"#94a3b8",marginBottom:10}}>BY HOUSEMATE</div>
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
             {personTotals.map(p=>(
