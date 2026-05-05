@@ -1026,7 +1026,7 @@ function SettleUpButton({persons,iOwe,theyOwe,myPerson,bills,myHouse,settlements
   const [paying,setPaying]=useState(null);
   const [marking,setMarking]=useState(false);
 
-  const approved=persons.filter(p=>p.is_approved);
+  const approved=persons.filter(p=>p.is_approved&&!p.suspended);
   const grandTotal=bills.reduce((s,b)=>s+Number(b.amount),0);
   const share=approved.length>0?grandTotal/approved.length:0;
 
@@ -1217,7 +1217,7 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
     if(filterCat&&b.categories?.id!==filterCat)return false;
     return true;
   });
-  const approved=persons.filter(p=>p.is_approved);
+  const approved=persons.filter(p=>p.is_approved&&!p.suspended);
   // Calculate balance month by month - settled months contribute 0
   const allMonths=[...new Set(bills.map(b=>b.bill_date.slice(0,7)))].sort();
   let netBal=0;
@@ -1265,7 +1265,7 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
             const latestMonth=allMonths[0]||"";
             const mBills=bills.filter(b=>b.bill_date.startsWith(latestMonth));
             const mTotal=mBills.reduce((s,b)=>s+Number(b.amount),0);
-            const approved=persons.filter(p=>p.is_approved);
+            const approved=persons.filter(p=>p.is_approved&&!p.suspended);
             const share=approved.length>0?Math.round((mTotal/approved.length)*100)/100:0;
             const lines=approved.map(p=>{
               const paid=mBills.filter(b=>(b.persons?b.persons.id:b.person_id)===p.id).reduce((s,b)=>s+Number(b.amount),0);
