@@ -1181,9 +1181,10 @@ function SettleUpButton({persons,iOwe,theyOwe,myPerson,bills,myHouse,settlements
                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
                   {mySettlements.map(s=>(
                     <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"#f8fafc",borderRadius:10}}>
-                      <div style={{width:28,height:28,borderRadius:"50%",background:s.from_person?.color||"#94a3b8",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"white"}}>{initials(s.from_person?.name||"?")}</div>
-                      <div style={{flex:1,fontSize:13}}>
-                        <span style={{fontWeight:600}}>{s.from_person?.name}</span> paid <span style={{fontWeight:600}}>{s.to_person?.name}</span>
+                      {(()=>{const fp=persons.find(p=>p.id===s.from_person_id)||s.from_person;const tp=persons.find(p=>p.id===s.to_person_id)||s.to_person;return(<>
+                      <div style={{width:28,height:28,borderRadius:"50%",background:fp?.color||"#94a3b8",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"white"}}>{initials(fp?.name||"?")}</div>
+                      <div style={{flex:1,fontSize:13,color:"#0f172a"}}>
+                        <span style={{fontWeight:600,color:"#0f172a"}}>{fp?.name||"?"}</span> paid <span style={{fontWeight:600,color:"#0f172a"}}>{tp?.name||"?"}</span>
                       </div>
                       <span style={{fontSize:11,fontWeight:600,color:methodColor(s.method),background:s.method==="revolut"?"#f3e8ff":"#f0fdf4",padding:"3px 8px",borderRadius:99}}>{methodLabel(s.method)}</span>
                       <span style={{fontFamily:"monospace",fontWeight:700,fontSize:13}}>{fmt(s.amount)}</span>
@@ -1225,7 +1226,10 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
     const mSettledIn=(settlements||[]).filter(s=>s.settlement_month===month&&(s.to_person_id===myPerson.id||(s.to_person&&s.to_person.id===myPerson.id))).reduce((s,x)=>s+Number(x.amount),0);
     netBal+=mRaw+mSettledOut-mSettledIn;
   });
-  netBal=Math.round(netBal*100)/100;
+  // Also handle settlements not tagged to a specific month (partial/full)
+  const untaggedOut=(settlements||[]).filter(s=>!s.settlement_month&&(s.from_person_id===myPerson.id||(s.from_person&&s.from_person.id===myPerson.id))).reduce((s,x)=>s+Number(x.amount),0);
+  const untaggedIn=(settlements||[]).filter(s=>!s.settlement_month&&(s.to_person_id===myPerson.id||(s.to_person&&s.to_person.id===myPerson.id))).reduce((s,x)=>s+Number(x.amount),0);
+  netBal=Math.round((netBal+untaggedOut-untaggedIn)*100)/100;
   const iOwe=Math.max(0,-netBal);
   const theyOwe=Math.max(0,netBal);
   return(
