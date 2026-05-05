@@ -1251,7 +1251,24 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
         </div>
         <div style={{display:"flex",gap:10}}>
           <SettleUpButton persons={persons} iOwe={iOwe} theyOwe={theyOwe} myPerson={myPerson} bills={bills} myHouse={myHouse} settlements={settlements||[]} reload={reload}/>
-          <button style={{flex:1,padding:"13px",borderRadius:12,background:"#1e293b",border:"none",color:"white",fontWeight:700,fontSize:15,cursor:"pointer"}}>Remind All</button>
+          <button onClick={()=>{
+            const now=new Date();
+            const mon=now.toLocaleString("default",{month:"long",year:"numeric"});
+            const allMonths=[...new Set(bills.map(b=>b.bill_date.slice(0,7)))].sort().reverse();
+            const latestMonth=allMonths[0]||"";
+            const mBills=bills.filter(b=>b.bill_date.startsWith(latestMonth));
+            const mTotal=mBills.reduce((s,b)=>s+Number(b.amount),0);
+            const approved=persons.filter(p=>p.is_approved);
+            const share=approved.length>0?Math.round((mTotal/approved.length)*100)/100:0;
+            const lines=approved.map(p=>{
+              const paid=mBills.filter(b=>(b.persons?b.persons.id:b.person_id)===p.id).reduce((s,b)=>s+Number(b.amount),0);
+              const diff=Math.round((paid-share)*100)/100;
+              return diff>=0?`✅ ${p.name}: paid ${fmt(paid)} (owed back ${fmt(diff)})`:` ${p.name}: paid ${fmt(paid)} (owes ${fmt(Math.abs(diff))})`;
+            }).join("\n");
+            const outstanding=iOwe>0?`\n💳 Outstanding: ${fmt(iOwe)} to pay`:(theyOwe>0?`\n💰 Outstanding: ${fmt(theyOwe)} to receive`:"\n✅ All settled!");
+            const msg=`🏠 ${myHouse.name} — ${new Date(latestMonth+"-01").toLocaleString("default",{month:"long",year:"numeric"})} Summary\n\nTotal spend: ${fmt(mTotal)}\nFair share: ${fmt(share)} each\n\n${lines}${outstanding}`;
+            window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");
+          }} style={{flex:1,padding:"13px",borderRadius:12,background:"#1e293b",border:"none",color:"white",fontWeight:700,fontSize:15,cursor:"pointer"}}>📤 Share</button>
         </div>
       </div>
       <div style={{overflowX:"auto",padding:"0 16px 12px",display:"flex",gap:8,scrollbarWidth:"none"}}>
