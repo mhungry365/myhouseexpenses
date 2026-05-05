@@ -1211,16 +1211,23 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
     return true;
   });
   const approved=persons.filter(p=>p.is_approved);
-  const grandTotal=bills.reduce((s,b)=>s+Number(b.amount),0);
-  const myTotal=bills.filter(b=>b.persons?.id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
-  const share=approved.length>0?grandTotal/approved.length:0;
-  // Subtract settlements from balance
-  const iReceived=(settlements||[]).filter(s=>(s.to_person?.id||s.to_person_id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
-  const iPaid=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
-  const rawOwe=Math.max(0,share-myTotal);
-  const rawOwed=Math.max(0,myTotal-share);
-  const iOwe=Math.max(0,rawOwe-iPaid);
-  const theyOwe=Math.max(0,rawOwed-iReceived);
+  // Calculate balance month by month - settled months contribute 0
+  const allMonths=[...new Set(bills.map(b=>b.bill_date.slice(0,7)))].sort();
+  let netBal=0;
+  allMonths.forEach(function(month){
+    const mBills=bills.filter(b=>b.bill_date.startsWith(month));
+    const mTotal=mBills.reduce((s,b)=>s+Number(b.amount),0);
+    if(mTotal===0||approved.length===0)return;
+    const mShare=Math.round((mTotal/approved.length)*100)/100;
+    const myMPaid=mBills.filter(b=>(b.persons?b.persons.id:b.person_id)===myPerson.id).reduce((s,b)=>s+Number(b.amount),0);
+    const mRaw=Math.round((myMPaid-mShare)*100)/100;
+    const mSettledOut=(settlements||[]).filter(s=>s.settlement_month===month&&(s.from_person_id===myPerson.id||(s.from_person&&s.from_person.id===myPerson.id))).reduce((s,x)=>s+Number(x.amount),0);
+    const mSettledIn=(settlements||[]).filter(s=>s.settlement_month===month&&(s.to_person_id===myPerson.id||(s.to_person&&s.to_person.id===myPerson.id))).reduce((s,x)=>s+Number(x.amount),0);
+    netBal+=mRaw+mSettledOut-mSettledIn;
+  });
+  netBal=Math.round(netBal*100)/100;
+  const iOwe=Math.max(0,-netBal);
+  const theyOwe=Math.max(0,netBal);
   return(
     <div>
       <div style={{margin:"0 0 20px",borderRadius:20,background:"#0f172a",padding:"24px 28px",color:"white"}}>
