@@ -1187,6 +1187,13 @@ function SettleUpButton({persons,iOwe,theyOwe,myPerson,bills,myHouse,settlements
                       </div>
                       <span style={{fontSize:11,fontWeight:600,color:methodColor(s.method),background:s.method==="revolut"?"#f3e8ff":"#f0fdf4",padding:"3px 8px",borderRadius:99}}>{methodLabel(s.method)}</span>
                       <span style={{fontFamily:"monospace",fontWeight:700,fontSize:13,color:"#0f172a"}}>{fmt(s.amount)}</span>
+                      {(s.from_person_id===myPerson?.id||(s.from_person&&s.from_person.id===myPerson?.id))&&(
+                        <button onClick={async()=>{
+                          if(!confirm("Undo this settlement?"))return;
+                          await supabase.from("settlements").delete().eq("id",s.id);
+                          setTimeout(()=>reload(),300);
+                        }} style={{padding:"4px 8px",borderRadius:8,border:"1px solid #fecaca",background:"#fff1f2",color:"#e11d48",fontSize:11,fontWeight:600,cursor:"pointer",flexShrink:0}}>Undo</button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1432,7 +1439,7 @@ function BillForm({myPerson,myHouse,categories,onSave,onCancel}){
 }
 
 function PeopleView({persons,bills,settlements=[]}){
-  const approved=persons.filter(p=>p.is_approved);
+  const approved=persons.filter(p=>p.is_approved&&!p.suspended);
   // Month-by-month net balance per person
   const allMonths=[...new Set(bills.map(b=>b.bill_date.slice(0,7)))].sort();
   const personNetBalance=(p)=>{
@@ -1485,7 +1492,7 @@ function ReportView({bills,persons,categories,settlements=[],myPerson}){
   const months=[...new Set(bills.map(b=>b.bill_date.slice(0,7)))].sort().reverse();
   const monthBills=bills.filter(b=>b.bill_date.startsWith(selMonth));
   const grandTotal=monthBills.reduce((s,b)=>s+Number(b.amount),0);
-  const approved=persons.filter(p=>p.is_approved);
+  const approved=persons.filter(p=>p.is_approved&&!p.suspended);
   const personTotals=approved.map(p=>({...p,total:monthBills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0)})).filter(p=>p.total>0);
   const catTotals=categories.map(c=>({...c,total:monthBills.filter(b=>b.categories?.id===c.id).reduce((s,b)=>s+Number(b.amount),0)})).filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
   return(
