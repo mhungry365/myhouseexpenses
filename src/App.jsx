@@ -1186,7 +1186,7 @@ function SettleUpButton({persons,iOwe,theyOwe,myPerson,bills,myHouse,settlements
                         <span style={{fontWeight:600,color:"#0f172a"}}>{(persons.find(p=>p.id===s.from_person_id)||s.from_person)?.name||"?"}</span> paid <span style={{fontWeight:600,color:"#0f172a"}}>{(persons.find(p=>p.id===s.to_person_id)||s.to_person)?.name||"?"}</span>
                       </div>
                       <span style={{fontSize:11,fontWeight:600,color:methodColor(s.method),background:s.method==="revolut"?"#f3e8ff":"#f0fdf4",padding:"3px 8px",borderRadius:99}}>{methodLabel(s.method)}</span>
-                      <span style={{fontFamily:"monospace",fontWeight:700,fontSize:13}}>{fmt(s.amount)}</span>
+                      <span style={{fontFamily:"monospace",fontWeight:700,fontSize:13,color:"#0f172a"}}>{fmt(s.amount)}</span>
                     </div>
                   ))}
                 </div>
@@ -1225,7 +1225,10 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
     const mSettledIn=(settlements||[]).filter(s=>s.settlement_month===month&&(s.to_person_id===myPerson.id||(s.to_person&&s.to_person.id===myPerson.id))).reduce((s,x)=>s+Number(x.amount),0);
     netBal+=mRaw+mSettledOut-mSettledIn;
   });
-  netBal=Math.round(netBal*100)/100;
+  // Untagged settlements (partial/full with no month tag)
+  const untagOut=(settlements||[]).filter(s=>!s.settlement_month&&(s.from_person_id===myPerson.id||(s.from_person&&s.from_person.id===myPerson.id))).reduce((a,x)=>a+Number(x.amount),0);
+  const untagIn=(settlements||[]).filter(s=>!s.settlement_month&&(s.to_person_id===myPerson.id||(s.to_person&&s.to_person.id===myPerson.id))).reduce((a,x)=>a+Number(x.amount),0);
+  netBal=Math.round((netBal+untagOut-untagIn)*100)/100;
   const iOwe=Math.max(0,-netBal);
   const theyOwe=Math.max(0,netBal);
   return(
