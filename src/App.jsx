@@ -1433,6 +1433,38 @@ function ReportView({bills,persons,categories}){
               );})}
             </div>
           </>}
+          {approved.length>1&&(()=>{
+            const totalSpend=bills.reduce((s,b)=>s+Number(b.amount),0);
+            const fairShare=Math.round((totalSpend/approved.length)*100)/100;
+            const pw=approved.map(p=>({...p,paid:bills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0)})).map(p=>({...p,diff:Math.round((p.paid-fairShare)*100)/100}));
+            const creditors=pw.filter(p=>p.diff>0);
+            const debtors=pw.filter(p=>p.diff<0);
+            if(!creditors.length||!debtors.length)return null;
+            return(
+              <div style={{marginBottom:20}}>
+                <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:"#94a3b8",marginBottom:10}}>WHO PAYS WHO</div>
+                {debtors.map(d=>creditors.map(c=>(
+                  <div key={d.id+c.id} style={{background:"white",borderRadius:14,padding:"16px",marginBottom:10}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:d.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"white"}}>{initials(d.name)}</div>
+                      <span style={{fontSize:13,color:"#64748b"}}>pays</span>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:c.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"white"}}>{initials(c.name)}</div>
+                      <span style={{flex:1,fontWeight:700,fontSize:18,color:"#e11d48",textAlign:"right"}}>{fmt(Math.abs(d.diff))}</span>
+                    </div>
+                    <div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",fontSize:12,color:"#64748b"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span>Total house spend</span><span style={{fontWeight:600,color:"#0f172a"}}>{fmt(totalSpend)}</span></div>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span>Fair share ({approved.length} people)</span><span style={{fontWeight:600,color:"#0f172a"}}>{fmt(fairShare)} each</span></div>
+                      <div style={{borderTop:"1px solid #e2e8f0",paddingTop:8}}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span>{d.name} paid</span><span style={{fontWeight:600,color:"#0f172a"}}>{fmt(d.paid)}</span></div>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span>{c.name} paid</span><span style={{fontWeight:600,color:"#0f172a"}}>{fmt(c.paid)}</span></div>
+                        <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #e2e8f0",paddingTop:8}}><span style={{fontWeight:600}}>{d.name} owes {c.name}</span><span style={{fontWeight:700,color:"#e11d48"}}>{fmt(Math.abs(d.diff))}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                )))}
+              </div>
+            );
+          })()}
           <button onClick={()=>window.print()} style={{width:"100%",padding:"14px",borderRadius:14,border:"1.5px solid #e2e8f0",background:"white",fontSize:15,fontWeight:600,cursor:"pointer",color:"#0f172a",marginBottom:10}}>Print / Export PDF</button>
         </>
       )}
