@@ -1495,9 +1495,9 @@ function ReportView({bills,persons,categories,settlements=[],myPerson}){
             const totalAll=monthBills.reduce((s,b)=>s+Number(b.amount),0);
             if(totalAll===0)return null;
             const shareAll=Math.round((totalAll/approved.length)*100)/100;
-            // Count settlements for this month OR untagged (partial) settlements
-            const iPaidTotal=(settlements||[]).filter(s=>(s.settlement_month===selMonth||!s.settlement_month)&&(s.from_person?.id||s.from_person_id)===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
-            const iReceivedTotal=(settlements||[]).filter(s=>(s.settlement_month===selMonth||!s.settlement_month)&&(s.to_person?.id||s.to_person_id)===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
+            // Only count settlements tagged to the selected month
+            const iPaidTotal=(settlements||[]).filter(s=>s.settlement_month===selMonth&&(s.from_person?.id||s.from_person_id)===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
+            const iReceivedTotal=(settlements||[]).filter(s=>s.settlement_month===selMonth&&(s.to_person?.id||s.to_person_id)===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
             const pw=approved.map(p=>{
               const paid=monthBills.filter(b=>b.persons?.id===p.id||b.person_id===p.id).reduce((s,b)=>s+Number(b.amount),0);
               const rawDiff=Math.round((paid-shareAll)*100)/100;
