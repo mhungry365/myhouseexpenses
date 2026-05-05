@@ -423,7 +423,7 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
 
       <div style={{maxWidth:700,margin:"0 auto",width:"100%"}}>{loading?<div style={{textAlign:"center",padding:"4rem",color:"#94a3b8"}}>Loading…</div>
         :view==="Bills"?<BillsView bills={bills} persons={persons} categories={categories} myPerson={myPerson} myHouse={myHouse} settlements={settlements} reload={loadAll} showToast={showToast} onAdd={()=>setShowForm(true)}/>
-        :view==="People"?<PeopleView persons={persons} bills={bills}/>
+        :view==="People"?<PeopleView persons={persons} bills={bills} settlements={settlements}/>
         :view==="Admin"?<HouseAdminView house={myHouse} persons={persons} bills={bills} categories={categories} reload={loadAll} showToast={showToast}/>
         :<ReportView bills={bills} persons={persons} categories={categories} settlements={settlements} myPerson={myPerson}/>
       }
