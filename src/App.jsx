@@ -1434,9 +1434,9 @@ function ReportView({bills,persons,categories}){
             </div>
           </>}
           {approved.length>1&&(()=>{
-            const totalSpend=bills.reduce((s,b)=>s+Number(b.amount),0);
+            const totalSpend=monthBills.reduce((s,b)=>s+Number(b.amount),0);
             const fairShare=Math.round((totalSpend/approved.length)*100)/100;
-            const pw=approved.map(p=>({...p,paid:bills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0)})).map(p=>({...p,diff:Math.round((p.paid-fairShare)*100)/100}));
+            const pw=approved.map(p=>({...p,paid:monthBills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0)})).map(p=>({...p,diff:Math.round((p.paid-fairShare)*100)/100}));
             const creditors=pw.filter(p=>p.diff>0);
             const debtors=pw.filter(p=>p.diff<0);
             if(!creditors.length||!debtors.length)return null;
