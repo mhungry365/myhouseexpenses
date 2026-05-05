@@ -1036,7 +1036,18 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
   }).filter(p=>p.paidExtra>0).sort((a,b)=>b.paidExtra-a.paidExtra);
 
   const mySettlements=(settlements||[]).filter(s=>s.from_person?.id===myPerson?.id||s.to_person?.id===myPerson?.id).slice(0,5);
-  const openSheet=()=>{ setShowSheet(true); };
+  const [settleMode,setSettleMode]=useState("all");
+  const [partialAmount,setPartialAmount]=useState("");
+  const [selectedMonth,setSelectedMonth]=useState("");
+  const months=[...new Set(bills.map(b=>b.bill_date.slice(0,7)))].sort().reverse();
+  const monthlyOwe=(month)=>{
+    const mBills=bills.filter(b=>b.bill_date.startsWith(month));
+    const mTotal=mBills.reduce((s,b)=>s+Number(b.amount),0);
+    const mShare=Math.round((mTotal/approved.length)*100)/100;
+    const myMTotal=mBills.filter(b=>b.persons?.id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
+    return Math.max(0,Math.round((mShare-myMTotal)*100)/100);
+  };
+  const openSheet=()=>{ setSelectedMonth(months[0]||""); setShowSheet(true); };
 
   const payByRevolut=(person)=>{
     const amount=Math.min(iOwe,person.paidExtra).toFixed(2);
@@ -1051,17 +1062,22 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
     setPaying({person,amount:parseFloat(amount),method:"revolut"});
   };
 
-  const markPaid=async(person,amount,method)=>{
+  const markPaid=async(person,amount,method,type="full",month=null)=>{
     setMarking(true);
     await supabase.from("settlements").insert([{
       house_id:myHouse.id,
       from_person_id:myPerson.id,
       to_person_id:person.id,
       amount:parseFloat(amount),
-      method
+      method,
+      settlement_type:type,
+      settlement_month:month,
+      note:type==="partial"?"Partial - balance carried forward":type==="monthly"?`Settled for ${month}`:"Full settlement"
     }]);
     setMarking(false);
     setPaying(null);
+    setSettleMode("all");
+    setPartialAmount("");
     reload();
   };
 
@@ -1113,8 +1129,31 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
                           <div style={{fontSize:12,color:"#64748b"}}>You will pay <span style={{fontWeight:700,color:"#e11d48"}}>{fmt(amount)}</span></div>
                         </div>
                       </div>
-                      <div style={{display:"flex",gap:8,marginTop:4,maxWidth:400}}>
-                        <button onClick={()=>markPaid(p,amount,"cash")} disabled={marking} style={{flex:1,padding:"9px 8px",borderRadius:10,border:"none",background:"#16a34a",color:"white",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                      <div style={{display:"flex",gap:4,background:"#f1f5f9",borderRadius:10,padding:3,marginBottom:10}}>
+                        {[["all","Settle All"],["monthly","By Month"],["partial","Partial"]].map(([m,l])=>(
+                          <button key={m} onClick={()=>setSettleMode(m)} style={{flex:1,padding:"7px",borderRadius:8,border:"none",background:settleMode===m?"white":"transparent",fontWeight:600,fontSize:11,cursor:"pointer",color:settleMode===m?"#0f172a":"#64748b"}}>{l}</button>
+                        ))}
+                      </div>
+                      {settleMode==="monthly"&&(
+                        <div style={{marginBottom:10}}>
+                          <select value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)} style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:13,fontWeight:600,color:"#0f172a",background:"white",boxSizing:"border-box"}}>
+                            {months.map(m=>{const [y,mo]=m.split("-").map(Number);const label=new Date(y,mo-1).toLocaleString("default",{month:"long",year:"numeric"});return<option key={m} value={m}>{label} — {fmt(monthlyOwe(m))}</option>;})}
+                          </select>
+                          <div style={{fontSize:11,color:"#94a3b8",marginTop:4}}>Remaining balance carries forward</div>
+                        </div>
+                      )}
+                      {settleMode==="partial"&&(
+                        <div style={{marginBottom:10}}>
+                          <input type="number" step="0.01" min="0.01" value={partialAmount} onChange={e=>setPartialAmount(e.target.value)} placeholder={`Enter amount (max ${fmt(amount)})`} style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:14,fontWeight:600,boxSizing:"border-box"}}/>
+                          <div style={{fontSize:11,color:"#94a3b8",marginTop:4}}>Remaining balance carries forward</div>
+                        </div>
+                      )}
+                      <div style={{display:"flex",gap:8,maxWidth:400}}>
+                        <button onClick={()=>{
+                          const amt=settleMode==="partial"?parseFloat(partialAmount)||0:settleMode==="monthly"?monthlyOwe(selectedMonth):amount;
+                          if(amt<=0)return;
+                          markPaid(p,amt,"cash",settleMode,settleMode==="monthly"?selectedMonth:null);
+                        }} disabled={marking} style={{flex:1,padding:"9px 8px",borderRadius:10,border:"none",background:"#16a34a",color:"white",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
                           💵 Cash
                         </button>
                         <button onClick={()=>payByRevolut(p)} style={{flex:1,padding:"9px 8px",borderRadius:10,border:"none",background:"#7c3aed",color:"white",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
