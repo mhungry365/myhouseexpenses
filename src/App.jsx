@@ -1027,23 +1027,200 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
   const [marking,setMarking]=useState(false);
 
   const approved=persons.filter(p=>p.is_approved);
-  // Month-by-month balance: only unsettled months contribute
-  const allMonths=[...new Set(bills.map(b=>b.bill_date.slice(0,7)))].sort();
-  let netBalance=0;
-  allMonths.forEach(month=>{
+  const grandTotal=bills.reduce((s,b)=>s+Number(b.amount),0);
+  const share=approved.length>0?grandTotal/approved.length:0;
+
+  // Calculate what others owe me (so I can show correct message when iOwe=0)
+  const myTotalPaid=bills.filter(b=>b.persons?.id===myPerson?.id||b.person_id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
+  const myShare=approved.length>0?grandTotal/approved.length:0;
+  const iAmOwed=Math.max(0,Math.round((myTotalPaid-myShare-((settlements||[]).filter(s=>(s.to_person?.id||s.to_person_id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0)))*100)/100);
+
+  const creditors=approved.filter(p=>p.id!==myPerson?.id).map(p=>{
+    const pTotal=bills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0);
+    const alreadyPaid=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id&&(s.to_person?.id||s.to_person_id)===p.id).reduce((s,x)=>s+Number(x.amount),0);
+    return {...p,paidExtra:Math.max(0,(pTotal-share)-alreadyPaid)};
+  }).filter(p=>p.paidExtra>0).sort((a,b)=>b.paidExtra-a.paidExtra);
+
+  const mySettlements=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id||(s.to_person?.id||s.to_person_id)===myPerson?.id).slice(0,5);
+  const [settleMode,setSettleMode]=useState("all");
+  const [partialAmount,setPartialAmount]=useState("");
+  const [selectedMonth,setSelectedMonth]=useState("");
+  const months=[...new Set(bills.map(b=>b.bill_date.slice(0,7)))].sort().reverse();
+  const monthlyOwe=(month)=>{
     const mBills=bills.filter(b=>b.bill_date.startsWith(month));
     const mTotal=mBills.reduce((s,b)=>s+Number(b.amount),0);
-    if(mTotal===0)return;
     const mShare=Math.round((mTotal/approved.length)*100)/100;
-    const myMTotal=mBills.filter(b=>(b.persons&&b.persons.id?b.persons.id:b.person_id)===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
-    const mRaw=Math.round((myMTotal-mShare)*100)/100;
-    const mOut=(settlements||[]).filter(s=>s.settlement_month===month&&(s.from_person_id||s.from_person&&s.from_person.id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
-    const mIn=(settlements||[]).filter(s=>s.settlement_month===month&&(s.to_person_id||s.to_person&&s.to_person.id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
-    netBalance+=mRaw+mOut-mIn;
+    const myMTotal=mBills.filter(b=>b.persons?.id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
+    return Math.max(0,Math.round((mShare-myMTotal)*100)/100);
+  };
+  const openSheet=()=>{ setSelectedMonth(months[0]||""); setShowSheet(true); };
+
+  const payByRevolut=(person)=>{
+    const amount=Math.min(iOwe,person.paidExtra).toFixed(2);
+    // If they have a revolut link use it, otherwise just open Revolut app
+    if(person.revolut_link){
+      const base=person.revolut_link.replace(/\/$/,"");
+      window.open(`${base}/${amount}EUR`,"_blank");
+    } else {
+      // Open Revolut app directly
+      window.open("https://revolut.com/app","_blank");
+    }
+    setPaying({person,amount:parseFloat(amount),method:"revolut"});
+  };
+
+  const markPaid=async(person,amount,method,type="full",month=null)=>{
+    setMarking(true);
+    await supabase.from("settlements").insert([{
+      house_id:myHouse.id,
+      from_person_id:myPerson.id,
+      to_person_id:person.id,
+      amount:parseFloat(amount),
+      method,
+      settlement_type:type,
+      settlement_month:month,
+      note:type==="partial"?"Partial - balance carried forward":type==="monthly"?`Settled for ${month}`:"Full settlement"
+    }]);
+    setMarking(false);
+    setPaying(null);
+    setSettleMode("all");
+    setPartialAmount("");
+    setSelectedMonth("");
+    setShowSheet(false);
+    setTimeout(()=>reload(),300);
+  };
+
+  const methodLabel=(m)=>m==="revolut"?"💜 Revolut":"💵 Cash";
+  const methodColor=(m)=>m==="revolut"?"#7c3aed":"#16a34a";
+
+  return(
+    <>
+      <button onClick={openSheet} style={{flex:1,padding:"13px",borderRadius:12,background:"white",border:"none",color:"#0f172a",fontWeight:700,fontSize:15,cursor:"pointer"}}>Settle Up</button>
+
+      {showSheet&&(
+        <div onClick={()=>{setShowSheet(false);setPaying(null);}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"flex-end"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"white",borderRadius:"24px 24px 0 0",padding:"24px 20px",width:"100%",maxHeight:"85vh",overflowY:"auto"}}>
+            <div style={{width:40,height:4,borderRadius:2,background:"#e2e8f0",margin:"0 auto 20px"}}/>
+            <h2 style={{margin:"0 0 6px",fontSize:20,fontWeight:700}}>Settle Up</h2>
+            <p style={{margin:"0 0 20px",fontSize:13,color:"#64748b"}}>Choose how you want to settle up</p>
+
+            {/* Confirm payment after Revolut */}
+            {paying&&(
+              <div style={{background:"#f0f7ff",borderRadius:14,padding:"16px",marginBottom:16,border:"1.5px solid #bfdbfe"}}>
+                <div style={{fontWeight:700,fontSize:14,marginBottom:6}}>Did you send the payment?</div>
+                <div style={{fontSize:13,color:"#64748b",marginBottom:12}}>Mark as paid so your housemates know it's settled.</div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>markPaid(paying.person,paying.amount,paying.method)} disabled={marking} style={{flex:1,padding:"11px",borderRadius:10,border:"none",background:"#0f172a",color:"white",fontWeight:700,fontSize:14,cursor:"pointer"}}>
+                    {marking?"Saving…":"✓ Yes, mark as paid"}
+                  </button>
+                  <button onClick={()=>setPaying(null)} style={{padding:"11px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"white",fontWeight:600,fontSize:14,cursor:"pointer"}}>Not yet</button>
+                </div>
+              </div>
+            )}
+
+            {/* Who you owe */}
+            {iOwe<=0?(
+              <div style={{textAlign:"center",padding:"2rem",background:iAmOwed>0?"#f0f9ff":"#f0fdf4",borderRadius:14,marginBottom:16}}>
+                <div style={{fontSize:32,marginBottom:8}}>{iAmOwed>0?"💰":"🎉"}</div>
+                <div style={{fontWeight:700,fontSize:16,color:iAmOwed>0?"#0284c7":"#16a34a"}}>{iAmOwed>0?"You will receive money!":"You're all settled up!"}</div>
+                <div style={{fontSize:13,color:"#64748b",marginTop:4}}>{iAmOwed>0?`You are owed ${fmt(iAmOwed)}. Ask your housemates to settle up.`:"You don't owe anyone anything."}</div>
+              </div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
+                {creditors.map(p=>{
+                  const amount=Math.min(iOwe,p.paidExtra);
+                  return(
+                    <div key={p.id} style={{background:"#f8fafc",borderRadius:14,padding:"14px 16px"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                        <div style={{width:42,height:42,borderRadius:"50%",background:p.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"white"}}>{initials(p.name)}</div>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:700,fontSize:15}}>{p.name}</div>
+                          <div style={{fontSize:12,color:"#64748b"}}>You will pay <span style={{fontWeight:700,color:"#e11d48"}}>{fmt(amount)}</span></div>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:4,background:"#f1f5f9",borderRadius:10,padding:3,marginBottom:10}}>
+                        {[["all","Settle All"],["monthly","By Month"],["partial","Partial"]].map(([m,l])=>(
+                          <button key={m} onClick={()=>setSettleMode(m)} style={{flex:1,padding:"7px",borderRadius:8,border:"none",background:settleMode===m?"white":"transparent",fontWeight:600,fontSize:11,cursor:"pointer",color:settleMode===m?"#0f172a":"#64748b"}}>{l}</button>
+                        ))}
+                      </div>
+                      {settleMode==="monthly"&&(
+                        <div style={{marginBottom:10}}>
+                          <select value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)} style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:13,fontWeight:600,color:"#0f172a",background:"white",boxSizing:"border-box"}}>
+                            {months.map(m=>{const [y,mo]=m.split("-").map(Number);const label=new Date(y,mo-1).toLocaleString("default",{month:"long",year:"numeric"});return<option key={m} value={m}>{label} — {fmt(monthlyOwe(m))}</option>;})}
+                          </select>
+                          <div style={{fontSize:11,color:"#94a3b8",marginTop:4}}>Remaining balance carries forward</div>
+                        </div>
+                      )}
+                      {settleMode==="partial"&&(
+                        <div style={{marginBottom:10}}>
+                          <input type="number" step="0.01" min="0.01" value={partialAmount} onChange={e=>setPartialAmount(e.target.value)} placeholder={`Enter amount (max ${fmt(amount)})`} style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:14,fontWeight:600,boxSizing:"border-box"}}/>
+                          <div style={{fontSize:11,color:"#94a3b8",marginTop:4}}>Remaining balance carries forward</div>
+                        </div>
+                      )}
+                      <div style={{display:"flex",gap:8,maxWidth:400}}>
+                        <button onClick={()=>{
+                          const amt=settleMode==="partial"?parseFloat(partialAmount)||0:settleMode==="monthly"?monthlyOwe(selectedMonth):amount;
+                          if(amt<=0)return;
+                          markPaid(p,amt,"cash",settleMode,settleMode==="monthly"?selectedMonth:null);
+                        }} disabled={marking} style={{flex:1,padding:"9px 8px",borderRadius:10,border:"none",background:"#16a34a",color:"white",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                          💵 Cash
+                        </button>
+                        <button onClick={()=>payByRevolut(p)} style={{flex:1,padding:"9px 8px",borderRadius:10,border:"none",background:"#7c3aed",color:"white",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                          💜 Revolut
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Settlement history */}
+            {mySettlements.length>0&&(
+              <>
+                <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:"#94a3b8",marginBottom:10}}>RECENT SETTLEMENTS</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {mySettlements.map(s=>(
+                    <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"#f8fafc",borderRadius:10}}>
+                      <div style={{width:28,height:28,borderRadius:"50%",background:s.from_person?.color||"#94a3b8",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"white"}}>{initials(s.from_person?.name||"?")}</div>
+                      <div style={{flex:1,fontSize:13}}>
+                        <span style={{fontWeight:600}}>{s.from_person?.name}</span> paid <span style={{fontWeight:600}}>{s.to_person?.name}</span>
+                      </div>
+                      <span style={{fontSize:11,fontWeight:600,color:methodColor(s.method),background:s.method==="revolut"?"#f3e8ff":"#f0fdf4",padding:"3px 8px",borderRadius:99}}>{methodLabel(s.method)}</span>
+                      <span style={{fontFamily:"monospace",fontWeight:700,fontSize:13}}>{fmt(s.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <button onClick={()=>{setShowSheet(false);setPaying(null);}} style={{width:"100%",marginTop:16,padding:"13px",borderRadius:12,border:"1.5px solid #e2e8f0",background:"white",fontSize:15,fontWeight:600,cursor:"pointer",color:"#475569"}}>Close</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── BILLS VIEW ───────────────────────────────────────────────────
+function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload,showToast,onAdd}){
+  const [filterPerson,setFilterPerson]=useState("");
+  const [filterCat,setFilterCat]=useState("");
+  const filtered=bills.filter(b=>{
+    if(filterPerson&&b.persons?.id!==filterPerson)return false;
+    if(filterCat&&b.categories?.id!==filterCat)return false;
+    return true;
   });
-  netBalance=Math.round(netBalance*100)/100;
-  const iOwe=Math.max(0,-netBalance);
-  const theyOwe=Math.max(0,netBalance);
+  const approved=persons.filter(p=>p.is_approved);
+  const grandTotal=bills.reduce((s,b)=>s+Number(b.amount),0);
+  const myTotal=bills.filter(b=>b.persons?.id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
+  const share=approved.length>0?grandTotal/approved.length:0;
+  // Subtract settlements from balance
+  const iReceived=(settlements||[]).filter(s=>(s.to_person?.id||s.to_person_id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
+  const iPaid=(settlements||[]).filter(s=>(s.from_person?.id||s.from_person_id)===myPerson?.id).reduce((s,x)=>s+Number(x.amount),0);
+  const rawOwe=Math.max(0,share-myTotal);
+  const rawOwed=Math.max(0,myTotal-share);
+  const iOwe=Math.max(0,rawOwe-iPaid);
+  const theyOwe=Math.max(0,rawOwed-iReceived);
   return(
     <div>
       <div style={{margin:"0 0 20px",borderRadius:20,background:"#0f172a",padding:"24px 28px",color:"white"}}>
