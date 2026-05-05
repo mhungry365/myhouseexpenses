@@ -379,6 +379,7 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
       .channel("bills-changes")
       .on("postgres_changes",{event:"*",schema:"public",table:"bills",filter:`house_id=eq.${myHouse.id}`},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"persons",filter:`house_id=eq.${myHouse.id}`},()=>loadAll())
+      .on("postgres_changes",{event:"*",schema:"public",table:"settlements",filter:`house_id=eq.${myHouse.id}`},()=>loadAll())
       .subscribe();
 
     return ()=>supabase.removeChannel(billsSub);
@@ -424,7 +425,7 @@ function HouseApp({myPerson,myHouse,isAdmin,onSignOut,onProfileUpdate}){
         :view==="Bills"?<BillsView bills={bills} persons={persons} categories={categories} myPerson={myPerson} myHouse={myHouse} settlements={settlements} reload={loadAll} showToast={showToast} onAdd={()=>setShowForm(true)}/>
         :view==="People"?<PeopleView persons={persons} bills={bills}/>
         :view==="Admin"?<HouseAdminView house={myHouse} persons={persons} bills={bills} categories={categories} reload={loadAll} showToast={showToast}/>
-        :<ReportView bills={bills} persons={persons} categories={categories}/>
+        :<ReportView bills={bills} persons={persons} categories={categories} settlements={settlements} myPerson={myPerson}/>
       }
 
       </div>
@@ -1078,7 +1079,9 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
     setPaying(null);
     setSettleMode("all");
     setPartialAmount("");
-    reload();
+    setSelectedMonth("");
+    setShowSheet(false);
+    setTimeout(()=>reload(),300);
   };
 
   const methodLabel=(m)=>m==="revolut"?"💜 Revolut":"💵 Cash";
@@ -1403,7 +1406,7 @@ function PeopleView({persons,bills}){
   );
 }
 
-function ReportView({bills,persons,categories}){
+function ReportView({bills,persons,categories,settlements=[],myPerson}){
   const now=new Date();
   const [selMonth,setSelMonth]=useState(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`);
   const months=[...new Set(bills.map(b=>b.bill_date.slice(0,7)))].sort().reverse();
@@ -1472,6 +1475,57 @@ function ReportView({bills,persons,categories}){
               );})}
             </div>
           </>}
+          {(()=>{
+            if(approved.length<2)return null;
+            const totalAll=bills.reduce((s,b)=>s+Number(b.amount),0);
+            if(totalAll===0)return null;
+            const shareAll=Math.round((totalAll/approved.length)*100)/100;
+            const iPaidTotal=(settlements||[]).filter(s=>s.from_person_id===myPerson?.id||s.from_person?.id===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
+            const iReceivedTotal=(settlements||[]).filter(s=>s.to_person_id===myPerson?.id||s.to_person?.id===myPerson?.id).reduce((a,x)=>a+Number(x.amount),0);
+            const pw=approved.map(p=>{
+              const paid=bills.filter(b=>b.persons?.id===p.id||b.person_id===p.id).reduce((s,b)=>s+Number(b.amount),0);
+              const rawDiff=Math.round((paid-shareAll)*100)/100;
+              const isMe=p.id===myPerson?.id;
+              const netDiff=isMe?rawDiff+iPaidTotal-iReceivedTotal:rawDiff;
+              return{...p,paid,rawDiff,netDiff};
+            });
+            const creditors=pw.filter(p=>p.netDiff>0.005);
+            const debtors=pw.filter(p=>p.netDiff<-0.005);
+            if(!creditors.length||!debtors.length){
+              return(
+                <div style={{background:"#f0fdf4",borderRadius:14,padding:"14px 16px",marginBottom:16,border:"1.5px solid #bbf7d0"}}>
+                  <div style={{fontWeight:700,fontSize:14,color:"#16a34a",marginBottom:4}}>🎉 All settled up!</div>
+                  <div style={{fontSize:12,color:"#64748b"}}>Total spend {fmt(totalAll)} — everyone is square.</div>
+                </div>
+              );
+            }
+            return(
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:"#94a3b8",marginBottom:8}}>WHO PAYS WHO</div>
+                {debtors.map(d=>creditors.map(c=>(
+                  <div key={d.id+c.id} style={{background:"white",borderRadius:14,padding:"16px",marginBottom:10,border:"1.5px solid #fecaca"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                      <div style={{width:30,height:30,borderRadius:"50%",background:d.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"white"}}>{initials(d.name)}</div>
+                      <span style={{fontSize:13,color:"#64748b",fontWeight:500}}>owes</span>
+                      <div style={{width:30,height:30,borderRadius:"50%",background:c.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"white"}}>{initials(c.name)}</div>
+                      <span style={{flex:1}}/>
+                      <span style={{fontWeight:800,fontSize:22,color:"#e11d48"}}>{fmt(Math.abs(d.netDiff))}</span>
+                    </div>
+                    <div style={{background:"#f8fafc",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#64748b",lineHeight:1.7}}>
+                      <div style={{display:"flex",justifyContent:"space-between"}}><span>Total house spend</span><span style={{fontWeight:700,color:"#0f172a"}}>{fmt(totalAll)}</span></div>
+                      <div style={{display:"flex",justifyContent:"space-between"}}><span>Fair share ({approved.length} people)</span><span style={{fontWeight:700,color:"#0f172a"}}>{fmt(shareAll)} each</span></div>
+                      <div style={{borderTop:"1px solid #e2e8f0",marginTop:6,paddingTop:6}}>
+                        <div style={{display:"flex",justifyContent:"space-between"}}><span>{d.name} paid</span><span style={{fontWeight:700,color:"#0f172a"}}>{fmt(d.paid)}</span></div>
+                        <div style={{display:"flex",justifyContent:"space-between"}}><span>{c.name} paid</span><span style={{fontWeight:700,color:"#0f172a"}}>{fmt(c.paid)}</span></div>
+                        {(iPaidTotal+iReceivedTotal)>0.005&&<div style={{display:"flex",justifyContent:"space-between",color:"#22c55e"}}><span>Already settled</span><span style={{fontWeight:700}}>{fmt(Math.max(iPaidTotal,iReceivedTotal))}</span></div>}
+                        <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #e2e8f0",marginTop:4,paddingTop:4,fontWeight:700}}><span style={{color:"#e11d48"}}>{d.name} still owes</span><span style={{color:"#e11d48"}}>{fmt(Math.abs(d.netDiff))}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                )))}
+              </div>
+            );
+          })()}
           <button onClick={()=>window.print()} style={{width:"100%",padding:"14px",borderRadius:14,border:"1.5px solid #e2e8f0",background:"white",fontSize:15,fontWeight:600,cursor:"pointer",color:"#0f172a",marginBottom:10}}>Print / Export PDF</button>
         </>
       )}
