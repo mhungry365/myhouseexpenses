@@ -1501,8 +1501,10 @@ function ReportView({bills,persons,categories,settlements=[],myPerson}){
             const pw=approved.map(p=>{
               const paid=monthBills.filter(b=>b.persons?.id===p.id||b.person_id===p.id).reduce((s,b)=>s+Number(b.amount),0);
               const rawDiff=Math.round((paid-shareAll)*100)/100;
-              const isMe=p.id===myPerson?.id;
-              const netDiff=isMe?rawDiff+iPaidTotal-iReceivedTotal:rawDiff;
+              // Calculate per-person settlements
+              const pPaidOut=(settlements||[]).filter(s=>s.settlement_month===selMonth&&(s.from_person?.id||s.from_person_id)===p.id).reduce((a,x)=>a+Number(x.amount),0);
+              const pReceivedIn=(settlements||[]).filter(s=>s.settlement_month===selMonth&&(s.to_person?.id||s.to_person_id)===p.id).reduce((a,x)=>a+Number(x.amount),0);
+              const netDiff=Math.round((rawDiff+pPaidOut-pReceivedIn)*100)/100;
               return{...p,paid,rawDiff,netDiff};
             });
             const creditors=pw.filter(p=>p.netDiff>0.005);
