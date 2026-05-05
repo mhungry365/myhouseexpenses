@@ -1036,20 +1036,7 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
   }).filter(p=>p.paidExtra>0).sort((a,b)=>b.paidExtra-a.paidExtra);
 
   const mySettlements=(settlements||[]).filter(s=>s.from_person?.id===myPerson?.id||s.to_person?.id===myPerson?.id).slice(0,5);
-  const [settleMode,setSettleMode]=useState("all"); // all|monthly|partial
-  const [partialAmount,setPartialAmount]=useState("");
-  const [selectedMonth,setSelectedMonth]=useState("");
-  const months=[...new Set(bills.map(b=>b.bill_date.slice(0,7)))].sort().reverse();
-
-  const monthlyOwe=(month)=>{
-    const mBills=bills.filter(b=>b.bill_date.startsWith(month));
-    const mTotal=mBills.reduce((s,b)=>s+Number(b.amount),0);
-    const mShare=Math.round((mTotal/approved.length)*100)/100;
-    const myMTotal=mBills.filter(b=>b.persons?.id===myPerson?.id).reduce((s,b)=>s+Number(b.amount),0);
-    return Math.max(0,Math.round((mShare-myMTotal)*100)/100);
-  };
-
-  const openSheet=()=>{ setSelectedMonth(months[0]||""); setShowSheet(true); };
+  const openSheet=()=>{ setShowSheet(true); };
 
   const payByRevolut=(person)=>{
     const amount=Math.min(iOwe,person.paidExtra).toFixed(2);
@@ -1064,22 +1051,17 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
     setPaying({person,amount:parseFloat(amount),method:"revolut"});
   };
 
-  const markPaid=async(person,amount,method,type="full",month=null)=>{
+  const markPaid=async(person,amount,method)=>{
     setMarking(true);
     await supabase.from("settlements").insert([{
       house_id:myHouse.id,
       from_person_id:myPerson.id,
       to_person_id:person.id,
       amount:parseFloat(amount),
-      method,
-      settlement_type:type,
-      settlement_month:month,
-      note:type==="partial"?"Partial payment - balance carried forward":type==="monthly"?`Settled for ${month}`:"Full settlement"
+      method
     }]);
     setMarking(false);
     setPaying(null);
-    setSettleMode("all");
-    setPartialAmount("");
     reload();
   };
 
@@ -1131,40 +1113,11 @@ function SettleUpButton({persons,iOwe,myPerson,bills,myHouse,settlements,reload}
                           <div style={{fontSize:12,color:"#64748b"}}>You will pay <span style={{fontWeight:700,color:"#e11d48"}}>{fmt(amount)}</span></div>
                         </div>
                       </div>
-                      {/* Settlement mode selector */}
-                      <div style={{display:"flex",gap:4,background:"#f1f5f9",borderRadius:10,padding:3,marginBottom:10}}>
-                        {[["all","All"],["monthly","Month"],["partial","Partial"]].map(([m,l])=>(
-                          <button key={m} onClick={()=>setSettleMode(m)} style={{flex:1,padding:"7px",borderRadius:8,border:"none",background:settleMode===m?"white":"transparent",fontWeight:600,fontSize:12,cursor:"pointer",color:settleMode===m?"#0f172a":"#64748b"}}>{l}</button>
-                        ))}
-                      </div>
-                      {settleMode==="monthly"&&(
-                        <div style={{marginBottom:10}}>
-                          <select value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)} style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:13,fontWeight:600,color:"#0f172a",background:"white"}}>
-                            {months.map(m=>{const [y,mo]=m.split("-").map(Number);const label=new Date(y,mo-1).toLocaleString("default",{month:"long",year:"numeric"});return<option key={m} value={m}>{label} — {fmt(monthlyOwe(m))}</option>;})}
-                          </select>
-                          <div style={{fontSize:11,color:"#94a3b8",marginTop:4}}>Remaining balance carries forward</div>
-                        </div>
-                      )}
-                      {settleMode==="partial"&&(
-                        <div style={{marginBottom:10}}>
-                          <input type="number" step="0.01" min="0.01" max={amount} value={partialAmount} onChange={e=>setPartialAmount(e.target.value)} placeholder={`Amount (max ${fmt(amount)})`} style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:14,fontWeight:600,boxSizing:"border-box"}}/>
-                          <div style={{fontSize:11,color:"#94a3b8",marginTop:4}}>Remaining balance carries forward</div>
-                        </div>
-                      )}
-                      <div style={{display:"flex",gap:8,maxWidth:400}}>
-                        <button onClick={()=>{
-                          const amt=settleMode==="partial"?parseFloat(partialAmount)||0:settleMode==="monthly"?monthlyOwe(selectedMonth):amount;
-                          if(amt<=0)return;
-                          markPaid(p,amt,"cash",settleMode,settleMode==="monthly"?selectedMonth:null);
-                        }} disabled={marking} style={{flex:1,padding:"9px 8px",borderRadius:10,border:"none",background:"#16a34a",color:"white",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                      <div style={{display:"flex",gap:8,marginTop:4,maxWidth:400}}>
+                        <button onClick={()=>markPaid(p,amount,"cash")} disabled={marking} style={{flex:1,padding:"9px 8px",borderRadius:10,border:"none",background:"#16a34a",color:"white",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
                           💵 Cash
                         </button>
-                        <button onClick={()=>{
-                          const amt=settleMode==="partial"?parseFloat(partialAmount)||0:settleMode==="monthly"?monthlyOwe(selectedMonth):amount;
-                          if(amt<=0)return;
-                          payByRevolut(p);
-                          setSettleMode("all");
-                        }} style={{flex:1,padding:"9px 8px",borderRadius:10,border:"none",background:"#7c3aed",color:"white",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                        <button onClick={()=>payByRevolut(p)} style={{flex:1,padding:"9px 8px",borderRadius:10,border:"none",background:"#7c3aed",color:"white",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
                           💜 Revolut
                         </button>
                       </div>
@@ -1440,30 +1393,6 @@ function ReportView({bills,persons,categories}){
               {approved.length>0&&<div><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>PER PERSON</div><div style={{fontWeight:700}}>{fmt(grandTotal/approved.length)}</div></div>}
             </div>
           </div>
-          {(()=>{
-            const totalAll=bills.reduce((s,b)=>s+Number(b.amount),0);
-            const shareAll=Math.round((totalAll/approved.length)*100)/100;
-            const pwAll=approved.map(p=>({...p,paid:bills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0)})).map(p=>({...p,diff:Math.round((p.paid-shareAll)*100)/100}));
-            const credAll=pwAll.filter(p=>p.diff>0);
-            const debAll=pwAll.filter(p=>p.diff<0);
-            if(!credAll.length||!debAll.length)return null;
-            return(
-              <div style={{background:"#f0fdf4",borderRadius:14,padding:"14px 16px",marginBottom:16,border:"1.5px solid #bbf7d0"}}>
-                <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"#16a34a",marginBottom:8}}>OVERALL BALANCE TO SETTLE</div>
-                {debAll.map(d=>credAll.map(c=>(
-                  <div key={d.id+c.id}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                      <div style={{width:28,height:28,borderRadius:"50%",background:d.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"white"}}>{initials(d.name)}</div>
-                      <span style={{fontSize:13,color:"#64748b"}}>pays</span>
-                      <div style={{width:28,height:28,borderRadius:"50%",background:c.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"white"}}>{initials(c.name)}</div>
-                      <span style={{fontWeight:800,fontSize:20,color:"#16a34a",flex:1,textAlign:"right"}}>{fmt(Math.abs(d.diff))}</span>
-                    </div>
-                    <div style={{fontSize:12,color:"#64748b"}}>Total spend {fmt(totalAll)} ÷ {approved.length} = {fmt(shareAll)} each · {d.name} paid {fmt(d.paid)} · {c.name} paid {fmt(c.paid)}</div>
-                  </div>
-                )))}
-              </div>
-            );
-          })()}
           <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:"#94a3b8",marginBottom:10}}>BY HOUSEMATE</div>
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
             {personTotals.map(p=>(
@@ -1504,38 +1433,6 @@ function ReportView({bills,persons,categories}){
               );})}
             </div>
           </>}
-          {approved.length>1&&(()=>{
-            const totalSpend=monthBills.reduce((s,b)=>s+Number(b.amount),0);
-            const fairShare=Math.round((totalSpend/approved.length)*100)/100;
-            const pw=approved.map(p=>({...p,paid:monthBills.filter(b=>b.persons?.id===p.id).reduce((s,b)=>s+Number(b.amount),0)})).map(p=>({...p,diff:Math.round((p.paid-fairShare)*100)/100}));
-            const creditors=pw.filter(p=>p.diff>0);
-            const debtors=pw.filter(p=>p.diff<0);
-            if(!creditors.length||!debtors.length)return null;
-            return(
-              <div style={{marginBottom:20}}>
-                <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:"#94a3b8",marginBottom:10}}>WHO PAYS WHO</div>
-                {debtors.map(d=>creditors.map(c=>(
-                  <div key={d.id+c.id} style={{background:"white",borderRadius:14,padding:"16px",marginBottom:10}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-                      <div style={{width:32,height:32,borderRadius:"50%",background:d.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"white"}}>{initials(d.name)}</div>
-                      <span style={{fontSize:13,color:"#64748b"}}>pays</span>
-                      <div style={{width:32,height:32,borderRadius:"50%",background:c.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"white"}}>{initials(c.name)}</div>
-                      <span style={{flex:1,fontWeight:700,fontSize:18,color:"#e11d48",textAlign:"right"}}>{fmt(Math.abs(d.diff))}</span>
-                    </div>
-                    <div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",fontSize:12,color:"#64748b"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span>Total house spend</span><span style={{fontWeight:600,color:"#0f172a"}}>{fmt(totalSpend)}</span></div>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span>Fair share ({approved.length} people)</span><span style={{fontWeight:600,color:"#0f172a"}}>{fmt(fairShare)} each</span></div>
-                      <div style={{borderTop:"1px solid #e2e8f0",paddingTop:8}}>
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span>{d.name} paid</span><span style={{fontWeight:600,color:"#0f172a"}}>{fmt(d.paid)}</span></div>
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span>{c.name} paid</span><span style={{fontWeight:600,color:"#0f172a"}}>{fmt(c.paid)}</span></div>
-                        <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #e2e8f0",paddingTop:8}}><span style={{fontWeight:600}}>{d.name} owes {c.name}</span><span style={{fontWeight:700,color:"#e11d48"}}>{fmt(Math.abs(d.diff))}</span></div>
-                      </div>
-                    </div>
-                  </div>
-                )))}
-              </div>
-            );
-          })()}
           <button onClick={()=>window.print()} style={{width:"100%",padding:"14px",borderRadius:14,border:"1.5px solid #e2e8f0",background:"white",fontSize:15,fontWeight:600,cursor:"pointer",color:"#0f172a",marginBottom:10}}>Print / Export PDF</button>
         </>
       )}
