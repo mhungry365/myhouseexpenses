@@ -1262,8 +1262,10 @@ function BillsView({bills,persons,categories,myPerson,myHouse,settlements,reload
             const share=approved.length>0?Math.round((mTotal/approved.length)*100)/100:0;
             const lines=approved.map(p=>{
               const paid=mBills.filter(b=>(b.persons?b.persons.id:b.person_id)===p.id).reduce((s,b)=>s+Number(b.amount),0);
-              const diff=Math.round((paid-share)*100)/100;
-              return diff>=0?`✅ ${p.name}: paid ${fmt(paid)} (owed back ${fmt(diff)})`:` ${p.name}: paid ${fmt(paid)} (owes ${fmt(Math.abs(diff))})`;
+              const settled=(settlements||[]).filter(s=>s.settlement_month===latestMonth&&(s.from_person_id===p.id||(s.from_person&&s.from_person.id===p.id))).reduce((a,x)=>a+Number(x.amount),0);
+              const totalContrib=paid+settled;
+              const diff=Math.round((totalContrib-share)*100)/100;
+              return diff>=0?`✅ ${p.name}: paid ${fmt(paid)}${settled>0?" + "+fmt(settled)+" settled":""} (owed back ${fmt(diff)})`:` ${p.name}: paid ${fmt(paid)}${settled>0?" + "+fmt(settled)+" settled":""} (owes ${fmt(Math.abs(diff))})`;
             }).join("\n");
             const outstanding=iOwe>0?`\n💳 Outstanding: ${fmt(iOwe)} to pay`:(theyOwe>0?`\n💰 Outstanding: ${fmt(theyOwe)} to receive`:"\n✅ All settled!");
             const msg=`🏠 ${myHouse.name} — ${new Date(latestMonth+"-01").toLocaleString("default",{month:"long",year:"numeric"})} Summary\n\nTotal spend: ${fmt(mTotal)}\nFair share: ${fmt(share)} each\n\n${lines}${outstanding}`;
